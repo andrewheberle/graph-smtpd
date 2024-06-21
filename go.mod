@@ -3,7 +3,7 @@ module github.com/andrewheberle/graph-smtpd
 go 1.21.4
 
 require (
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.6.0
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.7.0
 	github.com/OfimaticSRL/parsemail v0.0.0-20230321032643-37a2f96e6589
 	github.com/cloudflare/certinel v0.4.1
 	github.com/emersion/go-smtp v0.21.2
