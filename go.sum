@@ -80,6 +80,8 @@ github.com/microsoftgraph/msgraph-sdk-go v1.46.0 h1:5AT0FZkPFTiLZ9nZym1TLUFlcHFV
 github.com/microsoftgraph/msgraph-sdk-go v1.46.0/go.mod h1:Rf2aiCdmTvY325XfhxnUiRIuIyj66SYdszaovW091S0=
 github.com/microsoftgraph/msgraph-sdk-go v1.52.0 h1:UHx8TMF4drOoYjfcVUZ+oXg2QkJjG9j3Dw2qlYfZIg0=
 github.com/microsoftgraph/msgraph-sdk-go v1.52.0/go.mod h1:6bLNNzPle87+8W0MHYKJV8v3lTm8S6UvePMvMbmBL6E=
+github.com/microsoftgraph/msgraph-sdk-go v1.55.0 h1:Kk3LCSiSgq1BxewV+liw2S8zH3+dDqMwqIf65kEMTVQ=
+github.com/microsoftgraph/msgraph-sdk-go v1.55.0/go.mod h1:6bLNNzPle87+8W0MHYKJV8v3lTm8S6UvePMvMbmBL6E=
 github.com/microsoftgraph/msgraph-sdk-go-core v1.1.0 h1:NB7c/n4Knj+TLaLfjsahhSqoUqoN/CtyNB0XIe/nJnM=
 github.com/microsoftgraph/msgraph-sdk-go-core v1.1.0/go.mod h1:M3w/5IFJ1u/DpwOyjsjNSVEA43y1rLOeX58suyfBhGk=
 github.com/microsoftgraph/msgraph-sdk-go-core v1.2.1 h1:P1wpmn3xxfPMFJHg+PJPcusErfRkl63h6OdAnpDbkS8=
