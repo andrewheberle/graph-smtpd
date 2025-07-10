@@ -124,7 +124,7 @@ func main() {
 			"error", err,
 			"clientid", viper.GetString("clientid"),
 			"tenantid", viper.GetString("tenantid"),
-			"secret", redacted.Redacted(viper.GetString("secret")),
+			"secret", redacted.Redact(viper.GetString("secret")),
 		)
 		os.Exit(1)
 	}

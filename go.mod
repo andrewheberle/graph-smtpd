@@ -7,7 +7,7 @@ toolchain go1.24.1
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.8.2
 	github.com/OfimaticSRL/parsemail v0.0.0-20230321032643-37a2f96e6589
-	github.com/andrewheberle/redacted-string v1.0.0
+	github.com/andrewheberle/redacted-string v1.1.0
 	github.com/cloudflare/certinel v0.4.1
 	github.com/emersion/go-smtp v0.21.3
 	github.com/microsoftgraph/msgraph-sdk-go v1.65.0
