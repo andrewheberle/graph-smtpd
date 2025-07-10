@@ -9,7 +9,7 @@ require (
 	github.com/OfimaticSRL/parsemail v0.0.0-20230321032643-37a2f96e6589
 	github.com/andrewheberle/redacted-string v1.1.0
 	github.com/cloudflare/certinel v0.4.1
-	github.com/emersion/go-smtp v0.21.3
+	github.com/emersion/go-smtp v0.23.0
 	github.com/microsoftgraph/msgraph-sdk-go v1.65.0
 	github.com/oklog/run v1.1.0
 	github.com/prometheus/client_golang v1.21.1
@@ -25,7 +25,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cjlapao/common-go v0.0.41 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/emersion/go-sasl v0.0.0-20231106173351-e73c9f7bad43 // indirect
+	github.com/emersion/go-sasl v0.0.0-20241020182733-b788ff22d5a6 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
