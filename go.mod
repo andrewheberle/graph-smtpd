@@ -2,7 +2,7 @@ module github.com/andrewheberle/graph-smtpd
 
 go 1.23.0
 
-toolchain go1.24.1
+toolchain go1.25.5
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.8.2
