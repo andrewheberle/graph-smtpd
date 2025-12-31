@@ -13,7 +13,7 @@ require (
 	github.com/microsoftgraph/msgraph-sdk-go v1.78.0
 	github.com/oklog/run v1.1.0
 	github.com/prometheus/client_golang v1.23.2
-	github.com/spf13/pflag v1.0.6
+	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.19.0
 )
 
