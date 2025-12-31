@@ -9,7 +9,7 @@ require (
 	github.com/OfimaticSRL/parsemail v0.0.0-20230321032643-37a2f96e6589
 	github.com/andrewheberle/redacted-string v1.1.0
 	github.com/cloudflare/certinel v0.4.1
-	github.com/emersion/go-smtp v0.23.0
+	github.com/emersion/go-smtp v0.24.0
 	github.com/microsoftgraph/msgraph-sdk-go v1.92.0
 	github.com/oklog/run v1.2.0
 	github.com/prometheus/client_golang v1.23.2
