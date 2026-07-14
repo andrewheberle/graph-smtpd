@@ -70,7 +70,7 @@ dockers_v2:
   - images:
       - "ghcr.io/andrewheberle/graph-smtpd"
     ids:
-      - graph-smtpd
+      - smtpd
     tags:
       - "v{{ .Version }}"
       - "{{ if not .IsSnapshot }}latest{{ end }}"
@@ -78,7 +78,6 @@ dockers_v2:
     disable: false
     platforms:
       - linux/amd64
-      - linux/arm64
     labels:
       "org.opencontainers.image.description": "A SMTP service to relay via the Microsoft Graph API"
       "org.opencontainers.image.created": "{{ .Date }}"
