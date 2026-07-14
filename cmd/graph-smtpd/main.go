@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/andrewheberle/graph-smtpd/pkg/graphserver"
 	"github.com/andrewheberle/redacted-string"
@@ -124,6 +125,9 @@ func main() {
 		graphserver.WithLogger(logger),
 	}
 
+	// set up run group
+	g := run.Group{}
+
 	// set up metrics
 	metrics := k.String("metrics")
 	if metrics != "" {
@@ -132,8 +136,33 @@ func main() {
 			collectors.NewGoCollector(),
 			collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}),
 		)
-		http.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg}))
+
 		opts = append(opts, graphserver.WithPrometheusRegistry(reg))
+
+		// set up metrics http listener
+		h := http.NewServeMux()
+		h.Handle("/metrics", promhttp.HandlerFor(reg, promhttp.HandlerOpts{Registry: reg}))
+		s := &http.Server{
+			Addr:    metrics,
+			Handler: h,
+		}
+
+		g.Add(func() error {
+			logger.Info("starting up", "from", "metrics", "addr", metrics)
+			return s.ListenAndServe()
+		}, func(err error) {
+			if err != nil {
+				logger.Error("error on exit", "from", "metrics", "error", err)
+			}
+			go func() {
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+				defer cancel()
+
+				if err := s.Shutdown(ctx); err != nil {
+					logger.Error("error when shutting down", "from", "metrics", "error", err)
+				}
+			}()
+		})
 	}
 
 	// check secret was set, otherwise try the _FILE variation
@@ -142,7 +171,9 @@ func main() {
 		b, err := os.ReadFile(k.String("secret_file"))
 		if err == nil {
 			// if that worked then set SMTPD_SECRET
-			k.Set("secret", strings.TrimSpace(string(b)))
+			if err := k.Set("secret", strings.TrimSpace(string(b))); err != nil {
+				logger.Warn("could not set secret value based on contents of secret_file", "secret_file", k.String("secret_file"), "error", err)
+			}
 		} else {
 			// not a fatal error at this point
 			logger.Warn("could not read", "secret_file", k.String("secret_file"), "error", err)
@@ -170,9 +201,6 @@ func main() {
 	s.MaxRecipients = k.Int("recipients")
 	s.MaxMessageBytes = k.Int64("max")
 
-	// set up run group
-	g := run.Group{}
-
 	if k.String("cert") != "" && k.String("key") != "" {
 		ctx, cancel := context.WithCancel(context.Background())
 
@@ -199,19 +227,6 @@ func main() {
 		}
 	}
 
-	// set up metrics http listener if set
-	if metrics != "" {
-		g.Add(func() error {
-			logger.Info("starting up", "from", "metrics", "addr", metrics)
-			return http.ListenAndServe(metrics, nil)
-		}, func(err error) {
-			if err != nil {
-				logger.Error("error on exit", "from", "metrics", "error", err)
-			}
-			s.Close()
-		})
-	}
-
 	// add SMTP server
 	g.Add(func() error {
 		logger.Info("starting up", "from", "SMTP server", "addr", k.String("addr"), "domain", k.String("domain"))
@@ -220,7 +235,9 @@ func main() {
 		if err != nil {
 			logger.Error("error on exit", "from", "SMTP server", "error", err)
 		}
-		s.Close()
+		if err := s.Close(); err != nil {
+			logger.Error("error when shutting down", "from", "SMTP server", "error", err)
+		}
 	})
 
 	logger.Info("starting components")
