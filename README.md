@@ -99,7 +99,6 @@ Sending to one or more recipients via Cc/Bcc also works.
 ### TODO
 
 * Make logging better
-* Message queueing (if this is even a good idea)
 * SMTP authentication
 * Allow running as a service on Windows
 * Test with wider variety of devices
