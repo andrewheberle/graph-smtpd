@@ -1,0 +1,103 @@
+project_name: graph-smtpd
+
+version: 2
+
+builds:
+  - id: smtpd
+    binary: graph-smtpd
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    main: ./cmd/graph-smtpd
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    tags:
+      - netgo
+    ldflags:
+      - -s -w -X main.Version={{ .Version }}
+  - id: sendmail
+    binary: graph-sendmail
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    main: ./cmd/graph-sendmail
+    mod_timestamp: "{{ .CommitTimestamp }}"
+    tags:
+      - netgo
+    ldflags:
+      - -s -w -X main.Version={{ .Version }}
+
+gomod:
+  proxy: true
+
+changelog:
+  use: github-native
+
+checksum:
+  name_template: "checksums.txt"
+
+release:
+  draft: false
+  make_latest: true
+  replace_existing_artifacts: true
+  prerelease: auto
+
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sigstore.json"
+    args:
+      - sign-blob
+      - "--bundle=${signature}"
+      - "${artifact}"
+      - "--yes"
+    artifacts: checksum
+    output: true
+
+sboms:
+  - artifacts: binary
+    disable: false
+
+dockers_v2:
+  - images:
+      - "ghcr.io/andrewheberle/graph-smtpd"
+    ids:
+      - graph-smtpd
+    tags:
+      - "v{{ .Version }}"
+      - "{{ if not .IsSnapshot }}latest{{ end }}"
+    sbom: true
+    disable: false
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    labels:
+      "org.opencontainers.image.description": "A SMTP service to relay via the Microsoft Graph API"
+      "org.opencontainers.image.created": "{{ .Date }}"
+      "org.opencontainers.image.name": "{{ .ProjectName }}"
+      "org.opencontainers.image.revision": "{{ .FullCommit }}"
+      "org.opencontainers.image.version": "{{ .Version }}"
+      "org.opencontainers.image.source": "{{ .GitURL }}"
+    annotations:
+      "org.opencontainers.image.description": "A SMTP service to relay via the Microsoft Graph API"
+
+docker_digest:
+  name_template: "digests.txt"
+
+docker_signs:
+  - cmd: cosign
+    output: true
+    args:
+      - "sign"
+      - "${artifact}@${digest}"
+      - "--yes"

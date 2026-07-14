@@ -2,102 +2,121 @@ package main
 
 import (
 	"context"
-	"io"
+	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 
 	"github.com/OfimaticSRL/parsemail"
 	"github.com/andrewheberle/graph-smtpd/pkg/graphclient"
 	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
+	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/env/v2"
+	"github.com/knadh/koanf/providers/file"
+	"github.com/knadh/koanf/providers/posflag"
+	"github.com/knadh/koanf/v2"
 	"github.com/spf13/pflag"
-	"github.com/spf13/viper"
 )
 
+var Version = "dev"
+
 func main() {
+	// set up flagset
+	f := pflag.NewFlagSet("config", pflag.ContinueOnError)
+	f.Usage = func() {
+		fmt.Println(f.FlagUsages())
+		os.Exit(0)
+	}
+
 	// general options
-	pflag.String("config", "", "Configuration file")
-	pflag.Bool("debug", false, "Enable debugging")
-	pflag.Bool("quiet", false, "Enable quiet mode (no logging)")
+	f.String("config", "", "Configuration file")
+	f.Bool("debug", false, "Enable debugging")
+	f.Bool("quiet", false, "Enable quiet mode (no logging)")
+	f.Bool("version", false, "Display version and exit")
 
 	// Entra ID options
-	pflag.String("clientid", "", "App Registration Client/Application ID")
-	pflag.String("tenantid", "", "App Registration Tenant ID")
-	pflag.String("secret", "", "App Registration Client Secret")
-	pflag.Parse()
+	f.String("clientid", "", "App Registration Client/Application ID")
+	f.String("tenantid", "", "App Registration Tenant ID")
+	f.String("secret", "", "App Registration Client Secret")
 
 	// sending options
-	pflag.Bool("sentitems", false, "Save to sent items in senders mailbox")
+	f.Bool("sentitems", false, "Save to sent items in senders mailbox")
 
-	// viper setup
-	viper.SetEnvPrefix("sendmail")
-	viper.AutomaticEnv()
-	viper.BindPFlags(pflag.CommandLine)
+	// parse command line
+	if err := f.Parse(os.Args[1:]); err != nil {
+		fmt.Fprintf(os.Stderr, "error parsing command line flags: %s\n", err)
+		os.Exit(1)
+	}
+
+	// handle if version was requested
+	if version, err := f.GetBool("version"); err == nil && version {
+		fmt.Printf("graph-sendmail %s\n", Version)
+		os.Exit(0)
+	}
+
+	k := koanf.New(".")
 
 	// set up logger
 	logLevel := new(slog.LevelVar)
-	if viper.GetBool("quiet") {
-		// discard all log messages in quiet mode
-		h := slog.NewTextHandler(io.Discard, &slog.HandlerOptions{
-			Level: logLevel,
-			ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
-				// discard time
-				if a.Key == slog.TimeKey {
-					return slog.Attr{}
-				}
-
-				return a
-			},
-		})
-		slog.SetDefault(slog.New(h))
-	} else {
-		// otherwise send to stdout
-		h := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-			Level: logLevel,
-			ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
-				// discard time
-				if a.Key == slog.TimeKey {
-					return slog.Attr{}
-				}
-
-				return a
-			},
-		})
-		slog.SetDefault(slog.New(h))
-	}
-
-	if viper.GetBool("debug") {
-		logLevel.Set(slog.LevelDebug)
-	}
-
-	// load config file
-	config := viper.GetString("config")
-	if config != "" {
-		viper.SetConfigFile(config)
-	} else {
-		viper.SetConfigName("config")
-		viper.SetConfigType("yaml")
-		viper.AddConfigPath("/etc/graph-sendmail/")
-		viper.AddConfigPath("$HOME/.graph-sendmail")
-		viper.AddConfigPath(".")
-	}
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
-			if config != "" {
-				slog.Error("config file not found", "error", err, "config", config)
-				os.Exit(1)
-			} else {
-				slog.Info("running without config")
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
+		Level: logLevel,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			// discard time
+			if a.Key == slog.TimeKey {
+				return slog.Attr{}
 			}
-		} else {
-			slog.Error("config file was invalid", "error", err, "config", viper.ConfigFileUsed())
+
+			return a
+		},
+	}))
+
+	// load any config file
+	if config, err := f.GetString("config"); err != nil {
+		logger.Error("error getting flag value", "error", err)
+		os.Exit(1)
+	} else if config != "" {
+		if err := k.Load(file.Provider(config), yaml.Parser()); err != nil {
+			logger.Error("error loading configuiration file", "error", err)
 			os.Exit(1)
 		}
+	}
+
+	// Load env vars
+	if err := k.Load(env.Provider(".", env.Opt{
+		Prefix: "SENDMAIL_",
+		TransformFunc: func(k, v string) (string, any) {
+			// Transform the key.
+			k = strings.ReplaceAll(strings.ToLower(strings.TrimPrefix(k, "SENDMAIL_")), "_", ".")
+
+			// Transform values with commas into slices
+			if strings.Contains(v, ",") {
+				return k, strings.Split(v, ",")
+			}
+
+			return k, v
+		},
+	}), nil); err != nil {
+		logger.Error("error reading env vars", "error", err)
+		os.Exit(1)
+	}
+
+	// Load command line options
+	if err := k.Load(posflag.Provider(f, ".", k), nil); err != nil {
+		logger.Error("error reading command line", "error", err)
+		os.Exit(1)
+	}
+
+	// silence logger ig set in quiet mode
+	if k.Bool("quiet") {
+		logger = slog.New(slog.DiscardHandler)
 	} else {
-		slog.Info("config file loaded", "config", viper.ConfigFileUsed())
+		if k.Bool("debug") {
+			logLevel.Set(slog.LevelDebug)
+		}
 	}
 
 	// create graph client
-	client, err := graphclient.NewClient(viper.GetString("tenantid"), viper.GetString("clientId"), viper.GetString("secret"))
+	client, err := graphclient.NewClient(k.String("tenantid"), k.String("clientId"), k.String("secret"))
 	if err != nil {
 		slog.Error("could not create graph client", "error", err)
 		os.Exit(1)
@@ -122,11 +141,11 @@ func main() {
 	// message options
 	opts := []sendmail.MessageOption{
 		sendmail.WithAttachments(msg.Attachments),
-		sendmail.WithSaveToSentItems(viper.GetBool("sentitems")),
+		sendmail.WithSaveToSentItems(k.Bool("sentitems")),
 	}
 
 	// add context to logger
-	logger := slog.With("from", from, "to", to, "subject", subject)
+	logger = logger.With("from", from, "to", to, "subject", subject)
 
 	// add Cc recipients
 	if cc := header.Get("Cc"); cc != "" {
