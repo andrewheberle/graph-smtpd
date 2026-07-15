@@ -2,6 +2,7 @@ package graphserver
 
 import (
 	"fmt"
+	"log/slog"
 	"net"
 	"slices"
 
@@ -14,7 +15,7 @@ import (
 type Backend struct {
 	client          *graphclient.Client
 	saveToSentItems bool
-	logger          Logger
+	logger          *slog.Logger
 	allowedSenders  []string
 	allowedSources  []string
 
@@ -94,10 +95,9 @@ func (b *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
 	// increment total metric
 	b.emailTotal.Inc()
 
-	// return new session
-	return &Session{
+	// set up new session
+	s := &Session{
 		client:          b.client,
-		logger:          b.logger,
 		allowedSenders:  b.allowedSenders,
 		saveToSentItems: b.saveToSentItems,
 		helo:            c.Hostname(),
@@ -105,7 +105,15 @@ func (b *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
 		errors:          make([]error, 0),
 		sendErrors:      b.sendErrors,
 		sendDenied:      b.sendDenied,
-	}, nil
+	}
+
+	if b.logger == nil {
+		s.logger = slog.New(slog.DiscardHandler)
+	} else {
+		s.logger = b.logger
+	}
+
+	return s, nil
 }
 
 type BackendOption func(*Backend)
@@ -140,7 +148,7 @@ func WithAllowedSources(sources []string) BackendOption {
 	}
 }
 
-func WithLogger(logger Logger) BackendOption {
+func WithLogger(logger *slog.Logger) BackendOption {
 	return func(b *Backend) {
 		b.logger = logger
 	}
