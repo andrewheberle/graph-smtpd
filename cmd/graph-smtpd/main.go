@@ -79,7 +79,10 @@ func main() {
 	k := koanf.New(".")
 
 	// set up logger
-	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
+	logLevel := new(slog.LevelVar)
+	logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+		Level: logLevel,
+	}))
 
 	// load any config file
 	if config, err := f.GetString("config"); err != nil {
@@ -115,6 +118,10 @@ func main() {
 	if err := k.Load(posflag.Provider(f, ".", k), nil); err != nil {
 		logger.Error("error reading command line", "error", err)
 		os.Exit(1)
+	}
+
+	if k.Bool("debug") {
+		logLevel.Set(slog.LevelDebug)
 	}
 
 	// set backend options
@@ -192,7 +199,11 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger.Info("graph backend created")
+	logger.Info("graph backend created",
+		"clientid", k.String("clientid"),
+		"tenantid", k.String("tenantid"),
+		"secret", redacted.Redact(k.String("secret")),
+	)
 
 	// set up server
 	s := smtp.NewServer(be)
