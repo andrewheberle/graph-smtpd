@@ -2,6 +2,7 @@ package sendmail
 
 import (
 	"context"
+	"net/mail"
 	"strings"
 
 	graphmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
@@ -15,11 +16,11 @@ type Message struct {
 }
 
 func NewMessage(from, to, subject string, opts ...MessageOption) *Message {
-	m := new(Message)
-
-	m.body = graphmodels.NewItemBody()
-	m.message = graphmodels.NewMessage()
-	m.requestBody = graphusers.NewItemSendMailPostRequestBody()
+	m := &Message{
+		body:        graphmodels.NewItemBody(),
+		message:     graphmodels.NewMessage(),
+		requestBody: graphusers.NewItemSendMailPostRequestBody(),
+	}
 
 	// apply options
 	for _, o := range opts {
@@ -59,10 +60,14 @@ func parseAddressList(addresses string) []graphmodels.Recipientable {
 		return recipientList
 	}
 
-	// Split the address list by commas and trim spaces
+	// Split the address list by commas, trim spaces and parse as valid email address
 	list := strings.Split(addresses, ",")
 	for i := range list {
-		address := strings.TrimSpace(list[i])
+		a, err := mail.ParseAddress(strings.TrimSpace(list[i]))
+		if err != nil {
+			continue
+		}
+		address := a.Address
 
 		// build recipient
 		recipient := graphmodels.NewRecipient()
