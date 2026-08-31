@@ -8,7 +8,7 @@ require (
 	github.com/andrewheberle/redacted-string v1.1.0
 	github.com/cloudflare/certinel v0.4.1
 	github.com/emersion/go-smtp v0.24.0
-	github.com/knadh/koanf/parsers/yaml v1.1.0
+	github.com/knadh/koanf/parsers/yaml v1.1.1
 	github.com/knadh/koanf/providers/env/v2 v2.0.0
 	github.com/knadh/koanf/providers/file v1.2.1
 	github.com/knadh/koanf/providers/posflag v1.0.1
