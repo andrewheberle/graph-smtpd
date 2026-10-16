@@ -242,3 +242,36 @@ func TestBackendMailerError(t *testing.T) {
 		t.Errorf("errors = %v, want 1", got)
 	}
 }
+
+func TestBackendEmailTotalCountsSentMessages(t *testing.T) {
+	mailer := &fakeMailer{}
+	addr, reg := startServer(t, mailer)
+
+	// a connection that sends nothing is not an email
+	idle := dial(t, addr)
+	if err := idle.Hello("localhost"); err != nil {
+		t.Fatalf("Hello() error = %v", err)
+	}
+
+	c := dial(t, addr)
+	for range 3 {
+		if err := send(c, "alice@example.com", []string{"bob@example.com"}, testMessage); err != nil {
+			t.Fatalf("send() error = %v", err)
+		}
+	}
+
+	if got := counter(t, reg, "graph_smtpd_email_total"); got != 3 {
+		t.Errorf("email total = %v, want 3", got)
+	}
+}
+
+func TestBackendEmailTotalExcludesFailedSends(t *testing.T) {
+	mailer := &fakeMailer{err: errors.New("graph unavailable")}
+	addr, reg := startServer(t, mailer)
+
+	_ = send(dial(t, addr), "alice@example.com", []string{"bob@example.com"}, testMessage)
+
+	if got := counter(t, reg, "graph_smtpd_email_total"); got != 0 {
+		t.Errorf("email total = %v, want 0", got)
+	}
+}

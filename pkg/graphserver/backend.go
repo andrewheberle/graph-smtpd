@@ -61,7 +61,7 @@ func NewBackend(mailer Mailer, opts ...BackendOption) (*Backend, error) {
 	b.emailTotal = promauto.With(b.reg).NewCounter(
 		prometheus.CounterOpts{
 			Name: "graph_smtpd_email_total",
-			Help: "Total number of emails accepted by SMTP",
+			Help: "Total number of emails accepted by SMTP and sent",
 		},
 	)
 	b.sendErrors = promauto.With(b.reg).NewCounter(
@@ -92,9 +92,6 @@ func (b *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
 		}
 	}
 
-	// increment total metric
-	b.emailTotal.Inc()
-
 	// set up new session
 	s := &Session{
 		mailer:          b.mailer,
@@ -103,6 +100,7 @@ func (b *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
 		helo:            c.Hostname(),
 		remote:          c.Conn().RemoteAddr().String(),
 		errors:          make([]error, 0),
+		emailTotal:      b.emailTotal,
 		sendErrors:      b.sendErrors,
 		sendDenied:      b.sendDenied,
 	}

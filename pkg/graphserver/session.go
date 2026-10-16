@@ -24,6 +24,7 @@ type Session struct {
 	remote          string
 	errors          []error
 
+	emailTotal prometheus.Counter
 	sendErrors prometheus.Counter
 	sendDenied prometheus.Counter
 }
@@ -80,6 +81,9 @@ func (s *Session) Data(r io.Reader) error {
 
 		return err
 	}
+
+	// increment metric
+	s.emailTotal.Inc()
 
 	s.log().Debug("message sent", "rcpt", s.rcpt)
 
