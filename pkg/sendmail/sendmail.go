@@ -83,6 +83,11 @@ func FromMIME(r io.Reader, env Envelope, opts ...Option) (*Message, error) {
 	if err != nil {
 		return nil, err
 	}
+	inline, err := newInlineAttachments(msg.EmbeddedFiles)
+	if err != nil {
+		return nil, err
+	}
+	attachments = append(attachments, inline...)
 	if len(attachments) > 0 {
 		message.SetAttachments(attachments)
 	}
@@ -157,6 +162,29 @@ func newAttachments(attachments []parsemail.Attachment) ([]graphmodels.Attachmen
 		attachment := graphmodels.NewFileAttachment()
 		attachment.SetName(&a.Filename)
 		attachment.SetContentType(&a.ContentType)
+		attachment.SetContentBytes(data)
+
+		attachmentable = append(attachmentable, attachment)
+	}
+
+	return attachmentable, nil
+}
+
+// newInlineAttachments converts embedded files, such as images referenced
+// by "cid:" URLs in an HTML body, into inline attachments
+func newInlineAttachments(files []parsemail.EmbeddedFile) ([]graphmodels.Attachmentable, error) {
+	attachmentable := []graphmodels.Attachmentable{}
+	for _, f := range files {
+		data, err := io.ReadAll(f.Data)
+		if err != nil {
+			return nil, fmt.Errorf("could not read inline attachment %q: %w", f.CID, err)
+		}
+		inline := true
+		attachment := graphmodels.NewFileAttachment()
+		attachment.SetName(&f.CID)
+		attachment.SetContentId(&f.CID)
+		attachment.SetIsInline(&inline)
+		attachment.SetContentType(&f.ContentType)
 		attachment.SetContentBytes(data)
 
 		attachmentable = append(attachmentable, attachment)

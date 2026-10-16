@@ -196,3 +196,29 @@ func TestNewAttachmentsReadError(t *testing.T) {
 		t.Errorf("newAttachments() error = nil, want error")
 	}
 }
+
+func TestFromMIMEInlineAttachments(t *testing.T) {
+	m := fromFixture(t, "inline.eml", Envelope{From: "alice@example.com"})
+
+	attachments := m.message.GetAttachments()
+	if len(attachments) != 1 {
+		t.Fatalf("attachments = %d, want 1", len(attachments))
+	}
+
+	a, ok := attachments[0].(graphmodels.FileAttachmentable)
+	if !ok {
+		t.Fatalf("attachment is %T, want FileAttachmentable", attachments[0])
+	}
+	if got := a.GetContentId(); got == nil || *got != "logo@example.com" {
+		t.Errorf("content id = %v, want %q", got, "logo@example.com")
+	}
+	if got := a.GetIsInline(); got == nil || !*got {
+		t.Errorf("inline = %v, want true", got)
+	}
+	if got := *a.GetContentType(); got != "image/png" {
+		t.Errorf("content type = %q, want %q", got, "image/png")
+	}
+	if got := string(a.GetContentBytes()); got != "\x89PNG\r\n\x1a\n" {
+		t.Errorf("content = %q, want PNG signature", got)
+	}
+}
