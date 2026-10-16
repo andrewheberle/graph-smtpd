@@ -88,14 +88,14 @@ func main() {
 	// create graph mailer
 	mailer, err := sendmail.NewGraphMailer(tenantID, clientID, secret)
 	if err != nil {
-		slog.Error("could not create graph mailer", "error", err)
+		logger.Error("could not create graph mailer", "error", err)
 		os.Exit(1)
 	}
 
 	// build message from stdin, using headers in place of an envelope
 	message, err := sendmail.FromMIME(os.Stdin, sendmail.Envelope{}, sendmail.WithSaveToSentItems(k.Bool("sentitems")))
 	if err != nil {
-		slog.Error("unable to read message", "error", err)
+		logger.Error("unable to read message", "error", err)
 		os.Exit(1)
 	}
 
