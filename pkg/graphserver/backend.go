@@ -76,15 +76,13 @@ func NewBackend(mailer Mailer, opts ...BackendOption) (*Backend, error) {
 }
 
 // NewSession is called after client greeting (EHLO, HELO).
+//
+// A session is created even for a source that may not relay, so the client
+// gets a normal greeting and each message it tries is refused, and counted,
+// once at MAIL FROM.
 func (b *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
-	// Check if IP is allowed
-	if !b.policy.allowSource(c.Conn().RemoteAddr()) {
-		b.sendDenied.Inc()
-		return nil, errSourceDenied
-	}
-
-	// set up new session
 	s := &Session{
+		sourceDenied:    !b.policy.allowSource(c.Conn().RemoteAddr()),
 		mailer:          b.mailer,
 		policy:          b.policy,
 		saveToSentItems: b.saveToSentItems,

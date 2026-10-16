@@ -19,6 +19,7 @@ type Session struct {
 	logger          *slog.Logger
 	msgLogger       *slog.Logger
 	policy          *relayPolicy
+	sourceDenied    bool
 	helo            string
 	remote          string
 	errors          []error
@@ -31,6 +32,18 @@ type Session struct {
 func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 	s.from = from
 	s.msgLogger = s.log().With("from", from)
+
+	// check that the client's address may relay
+	if s.sourceDenied {
+		err := errSourceDenied
+		s.errors = append(s.errors, err)
+		s.log().Error("problem checking allowed sources", "error", err, "remote", s.remote)
+
+		// increment metric
+		s.sendDenied.Inc()
+
+		return err
+	}
 
 	// check that sender is allowed
 	if !s.policy.allowSender(from) {
