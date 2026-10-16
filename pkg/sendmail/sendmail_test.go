@@ -2,13 +2,13 @@ package sendmail
 
 import (
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"testing/iotest"
-
-	"github.com/OfimaticSRL/parsemail"
 
 	graphmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 )
@@ -187,13 +187,15 @@ func TestFromMIMENoSender(t *testing.T) {
 	}
 }
 
-func TestNewAttachmentsReadError(t *testing.T) {
-	attachments := []parsemail.Attachment{
-		{Filename: "bad.txt", ContentType: "text/plain", Data: iotest.ErrReader(errors.New("read failed"))},
-	}
+func TestFromMIMEReadError(t *testing.T) {
+	// the stream fails partway through an attachment
+	partial := "From: alice@example.com\nTo: bob@example.com\nContent-Type: multipart/mixed; boundary=b1\n\n" +
+		"--b1\nContent-Type: text/plain\n\nSee attached.\n" +
+		"--b1\nContent-Disposition: attachment; filename=a.txt\n\npartial"
+	r := io.MultiReader(strings.NewReader(partial), iotest.ErrReader(errors.New("read failed")))
 
-	if _, err := newAttachments(attachments); err == nil {
-		t.Errorf("newAttachments() error = nil, want error")
+	if _, err := FromMIME(r, Envelope{From: "alice@example.com"}); err == nil {
+		t.Errorf("FromMIME() error = nil, want error")
 	}
 }
 
@@ -251,5 +253,53 @@ func TestFromMIMENoRecipients(t *testing.T) {
 
 	if _, err := FromMIME(f, Envelope{}); err == nil {
 		t.Errorf("FromMIME() error = nil, want error")
+	}
+}
+
+// attachmentContents returns the content of each file attachment of m by name.
+func attachmentContents(t *testing.T, m *Message) map[string]string {
+	t.Helper()
+
+	contents := map[string]string{}
+	for _, a := range m.message.GetAttachments() {
+		f, ok := a.(graphmodels.FileAttachmentable)
+		if !ok {
+			t.Fatalf("attachment is %T, want FileAttachmentable", a)
+		}
+		contents[*f.GetName()] = string(f.GetContentBytes())
+	}
+
+	return contents
+}
+
+func TestFromMIMEAttachmentEncodings(t *testing.T) {
+	m := fromFixture(t, "attachment-qp.eml", Envelope{From: "alice@example.com"})
+
+	got := attachmentContents(t, m)
+	want := map[string]string{"qp.txt": "café", "plain.txt": "unencoded"}
+	for name, content := range want {
+		if got[name] != content {
+			t.Errorf("attachment %q = %q, want %q", name, got[name], content)
+		}
+	}
+}
+
+func TestFromMIMESinglePartAttachment(t *testing.T) {
+	m := fromFixture(t, "pdf-only.eml", Envelope{From: "alice@example.com"})
+
+	got := attachmentContents(t, m)
+	if got["doc.pdf"] != "%PDF-1.4" {
+		t.Errorf("attachments = %q, want doc.pdf with PDF content", got)
+	}
+}
+
+func TestFromMIMECharset(t *testing.T) {
+	m := fromFixture(t, "charset.eml", Envelope{From: "alice@example.com"})
+
+	if got, want := *m.message.GetSubject(), "café"; got != want {
+		t.Errorf("subject = %q, want %q", got, want)
+	}
+	if got, _ := body(m); got != "café “quoted”" {
+		t.Errorf("body = %q, want %q", got, "café “quoted”")
 	}
 }

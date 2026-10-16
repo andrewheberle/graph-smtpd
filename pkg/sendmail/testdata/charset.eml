@@ -1,0 +1,8 @@
+From: alice@example.com
+To: bob@example.com
+Subject: =?windows-1252?q?caf=E9?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=windows-1252
+Content-Transfer-Encoding: quoted-printable
+
+caf=E9 =93quoted=94

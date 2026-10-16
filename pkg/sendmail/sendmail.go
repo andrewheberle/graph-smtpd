@@ -7,7 +7,6 @@ import (
 	"net/mail"
 	"strings"
 
-	"github.com/OfimaticSRL/parsemail"
 	graphmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 	graphusers "github.com/microsoftgraph/msgraph-sdk-go/users"
 )
@@ -35,17 +34,17 @@ func FromMIME(r io.Reader, env Envelope, opts ...Option) (*Message, error) {
 		opt(o)
 	}
 
-	msg, err := parsemail.Parse(r)
+	msg, err := parseMIME(r)
 	if err != nil {
 		return nil, fmt.Errorf("could not parse message: %w", err)
 	}
 
-	header := msg.Header
+	header := msg.header
 
 	// without an envelope sender use the address from the From header
 	from := env.From
-	if from == "" && len(msg.From) > 0 {
-		from = msg.From[0].Address
+	if addrs := parseAddressList(header.Get("From")); from == "" && len(addrs) > 0 {
+		from = addrs[0]
 	}
 	if from == "" {
 		return nil, fmt.Errorf("message has no sender")
@@ -53,8 +52,7 @@ func FromMIME(r io.Reader, env Envelope, opts ...Option) (*Message, error) {
 
 	message := graphmodels.NewMessage()
 
-	subject := header.Get("Subject")
-	message.SetSubject(&subject)
+	message.SetSubject(&msg.subject)
 	message.SetFrom(newRecipient(from))
 
 	to := parseAddressList(header.Get("To"))
@@ -79,26 +77,17 @@ func FromMIME(r io.Reader, env Envelope, opts ...Option) (*Message, error) {
 
 	// Graph takes a single body, so prefer HTML and fall back to text
 	body := graphmodels.NewItemBody()
-	if msg.HTMLBody != "" {
+	if msg.htmlBody != "" {
 		contentType := graphmodels.HTML_BODYTYPE
-		body.SetContent(&msg.HTMLBody)
+		body.SetContent(&msg.htmlBody)
 		body.SetContentType(&contentType)
 	} else {
-		body.SetContent(&msg.TextBody)
+		body.SetContent(&msg.textBody)
 	}
 	message.SetBody(body)
 
-	attachments, err := newAttachments(msg.Attachments)
-	if err != nil {
-		return nil, err
-	}
-	inline, err := newInlineAttachments(msg.EmbeddedFiles)
-	if err != nil {
-		return nil, err
-	}
-	attachments = append(attachments, inline...)
-	if len(attachments) > 0 {
-		message.SetAttachments(attachments)
+	if len(msg.attachments) > 0 {
+		message.SetAttachments(newAttachments(msg.attachments))
 	}
 
 	requestBody := graphusers.NewItemSendMailPostRequestBody()
@@ -155,45 +144,24 @@ func newRecipient(address string) graphmodels.Recipientable {
 	return recipient
 }
 
-func newAttachments(attachments []parsemail.Attachment) ([]graphmodels.Attachmentable, error) {
-	attachmentable := []graphmodels.Attachmentable{}
+// newAttachments converts attachments to Graph file attachments; inline
+// attachments keep their content ID so an HTML body can reference them.
+func newAttachments(attachments []attachment) []graphmodels.Attachmentable {
+	attachmentable := make([]graphmodels.Attachmentable, 0, len(attachments))
 	for _, a := range attachments {
-		data, err := io.ReadAll(a.Data)
-		if err != nil {
-			return nil, fmt.Errorf("could not read attachment %q: %w", a.Filename, err)
-		}
 		attachment := graphmodels.NewFileAttachment()
-		attachment.SetName(&a.Filename)
-		attachment.SetContentType(&a.ContentType)
-		attachment.SetContentBytes(data)
+		attachment.SetName(&a.name)
+		attachment.SetContentType(&a.contentType)
+		attachment.SetContentBytes(a.data)
+		if a.inline {
+			attachment.SetContentId(&a.contentID)
+			attachment.SetIsInline(&a.inline)
+		}
 
 		attachmentable = append(attachmentable, attachment)
 	}
 
-	return attachmentable, nil
-}
-
-// newInlineAttachments converts embedded files, such as images referenced
-// by "cid:" URLs in an HTML body, into inline attachments
-func newInlineAttachments(files []parsemail.EmbeddedFile) ([]graphmodels.Attachmentable, error) {
-	attachmentable := []graphmodels.Attachmentable{}
-	for _, f := range files {
-		data, err := io.ReadAll(f.Data)
-		if err != nil {
-			return nil, fmt.Errorf("could not read inline attachment %q: %w", f.CID, err)
-		}
-		inline := true
-		attachment := graphmodels.NewFileAttachment()
-		attachment.SetName(&f.CID)
-		attachment.SetContentId(&f.CID)
-		attachment.SetIsInline(&inline)
-		attachment.SetContentType(&f.ContentType)
-		attachment.SetContentBytes(data)
-
-		attachmentable = append(attachmentable, attachment)
-	}
-
-	return attachmentable, nil
+	return attachmentable
 }
 
 // addresses returns the email addresses of recipients
