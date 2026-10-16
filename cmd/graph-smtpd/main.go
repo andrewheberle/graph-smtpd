@@ -174,7 +174,7 @@ func main() {
 	)
 
 	// set up server
-	s := newServer(be, k)
+	s := newServer(be, k, logger)
 
 	if k.String("cert") != "" && k.String("key") != "" {
 		ctx, cancel := context.WithCancel(context.Background())
@@ -227,9 +227,11 @@ func loadConfig(f *pflag.FlagSet) (configger.Config, error) {
 	return configger.LoadConfig(f, configger.WithEnvPrefix("SMTPD"))
 }
 
-// newServer creates the SMTP server for be from the configuration in k.
-func newServer(be smtp.Backend, k configger.Config) *smtp.Server {
+// newServer creates the SMTP server for be from the configuration in k,
+// logging its internal errors to logger.
+func newServer(be smtp.Backend, k configger.Config, logger *slog.Logger) *smtp.Server {
 	s := smtp.NewServer(be)
+	s.ErrorLog = graphserver.NewErrorLog(logger)
 	s.Addr = k.String("addr")
 	s.Domain = k.String("domain")
 	s.MaxRecipients = k.Int("recipients")

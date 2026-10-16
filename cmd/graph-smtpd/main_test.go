@@ -2,10 +2,13 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"io"
+	"log/slog"
 	"net"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -78,7 +81,7 @@ func TestNewServerClosesIdleConnections(t *testing.T) {
 	if err != nil {
 		t.Fatalf("could not listen: %v", err)
 	}
-	s := newServer(nopBackend{}, cfg)
+	s := newServer(nopBackend{}, cfg, slog.New(slog.DiscardHandler))
 	go func() { _ = s.Serve(l) }()
 	t.Cleanup(func() { _ = s.Close() })
 
@@ -103,5 +106,25 @@ func TestNewServerClosesIdleConnections(t *testing.T) {
 			}
 			return
 		}
+	}
+}
+
+func TestNewServerLogsSMTPErrors(t *testing.T) {
+	f := pflag.NewFlagSet("config", pflag.ContinueOnError)
+	f.String("config", "", "")
+	if err := f.Parse(nil); err != nil {
+		t.Fatalf("could not parse flags: %v", err)
+	}
+	cfg, err := loadConfig(f)
+	if err != nil {
+		t.Fatalf("loadConfig() error = %v", err)
+	}
+
+	var buf bytes.Buffer
+	s := newServer(nopBackend{}, cfg, slog.New(slog.NewJSONHandler(&buf, nil)))
+	s.ErrorLog.Printf("handshake failed")
+
+	if !strings.Contains(buf.String(), `"msg":"smtp server error"`) || !strings.Contains(buf.String(), "handshake failed") {
+		t.Errorf("SMTP server error not logged: %q", buf.String())
 	}
 }

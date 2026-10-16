@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"log/slog"
 	"math/big"
 	"net"
 	netsmtp "net/smtp"
@@ -91,7 +92,7 @@ func startTLSServer(t *testing.T, certFile, keyFile string) string {
 	t.Cleanup(cancel)
 	go func() { _ = sentinel.Start(ctx) }()
 
-	s := newServer(nopBackend{}, testConfig(t))
+	s := newServer(nopBackend{}, testConfig(t), slog.New(slog.DiscardHandler))
 	s.TLSConfig = tlsConfig
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
@@ -214,7 +215,7 @@ func TestStartTLSReloadsCertificate(t *testing.T) {
 }
 
 func TestNoStartTLSWithoutCertificate(t *testing.T) {
-	s := newServer(nopBackend{}, testConfig(t))
+	s := newServer(nopBackend{}, testConfig(t), slog.New(slog.DiscardHandler))
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
