@@ -1,0 +1,17 @@
+From: alice@example.com
+To: bob@example.com
+Subject: With attachment
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="b1"
+
+--b1
+Content-Type: text/plain; charset=utf-8
+
+See attached.
+--b1
+Content-Type: text/plain; name="notes.txt"
+Content-Disposition: attachment; filename="notes.txt"
+Content-Transfer-Encoding: base64
+
+aGVsbG8gd29ybGQ=
+--b1--

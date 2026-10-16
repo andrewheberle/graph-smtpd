@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/OfimaticSRL/parsemail"
 	"github.com/andrewheberle/graph-smtpd/pkg/graphclient"
 	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
 	"github.com/knadh/koanf/parsers/yaml"
@@ -122,57 +121,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	// parse incoming message
-	msg, err := parsemail.Parse(os.Stdin)
+	// build message from stdin, using headers in place of an envelope
+	message, err := sendmail.FromMIME(os.Stdin, sendmail.Envelope{}, sendmail.WithSaveToSentItems(k.Bool("sentitems")))
 	if err != nil {
 		slog.Error("unable to read message", "error", err)
 		os.Exit(1)
 	}
 
-	// with debug enabled show whole message
-	slog.Debug("message", "msg", msg)
-
-	// grab headers and content
-	header := msg.Header
-	subject := header.Get("Subject")
-	from := header.Get("From")
-	to := header.Get("To")
-
-	// message options
-	opts := []sendmail.MessageOption{
-		sendmail.WithAttachments(msg.Attachments),
-		sendmail.WithSaveToSentItems(k.Bool("sentitems")),
-	}
-
 	// add context to logger
-	logger = logger.With("from", from, "to", to, "subject", subject)
-
-	// add Cc recipients
-	if cc := header.Get("Cc"); cc != "" {
-		logger = logger.With("cc", cc)
-		opts = append(opts, sendmail.WithCc(cc))
-	}
-
-	// add Bcc recipients
-	if bcc := header.Get("Bcc"); bcc != "" {
-		logger = logger.With("bcc", bcc)
-		opts = append(opts, sendmail.WithBcc(bcc))
-	}
-
-	// handle HTML or text bodies
-	if msg.TextBody == "" {
-		logger = logger.With("size", len(msg.HTMLBody), "type", "text/html")
-		opts = append(opts, sendmail.WithBody(msg.HTMLBody), sendmail.WithHTMLContent())
-	} else if msg.HTMLBody == "" {
-		logger = logger.With("size", len(msg.TextBody), "type", "text/plain")
-		opts = append(opts, sendmail.WithBody(msg.TextBody))
-	}
-
-	// create the request ready to POST
-	message := sendmail.NewMessage(from, to, subject, opts...)
+	logger = logger.With("message", message)
 
 	// create user object
-	user := client.Users().ByUserId(from)
+	user := client.Users().ByUserId(message.From())
 
 	// send email
 	if err := message.Send(context.Background(), user); err != nil {
