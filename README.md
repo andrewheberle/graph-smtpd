@@ -86,6 +86,7 @@ cat email.txt | ./graph-sendmail
 * `--sentitems`: Save to senders sent items (bool)
 * `--secret`: Client Secret (string)
 * `--tenantid`: Tenant ID (string)
+* `--timeout`: Time allowed to send the message via Graph (default = 30s, 0 for no limit) (duration)
 * `--quiet`: Silence any output (bool)
 * `--debug`: Enable debug logging (bool)
 

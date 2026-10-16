@@ -114,3 +114,17 @@ func TestQuietSilencesErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestSendTimeout(t *testing.T) {
+	message := "From: alice@example.com\r\nTo: bob@example.com\r\nSubject: Hello\r\n\r\nHello Bob.\r\n"
+
+	stderr, err := runMain(t, message, "--timeout", "1ns", "--tenantid", "tenant", "--clientid", "client", "--secret", "secret")
+
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) || exitErr.ExitCode() != 1 {
+		t.Fatalf("exit = %v, want exit status 1", err)
+	}
+	if !strings.Contains(stderr, "context deadline exceeded") {
+		t.Errorf("stderr = %q, want a send timeout", stderr)
+	}
+}
