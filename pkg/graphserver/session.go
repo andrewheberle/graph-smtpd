@@ -21,6 +21,7 @@ type Session struct {
 	client          *graphclient.Client
 	saveToSentItems bool
 	logger          *slog.Logger
+	msgLogger       *slog.Logger
 	allowedSenders  []string
 	helo            string
 	remote          string
@@ -32,12 +33,12 @@ type Session struct {
 
 func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 	s.from = from
-	s.logger = s.logger.With("from", from)
+	s.msgLogger = s.log().With("from", from)
 
 	if s.client == nil {
 		err := errors.New("graph client not initialised")
 		s.errors = append(s.errors, err)
-		s.logger.Error("problem with graph client", "error", err)
+		s.log().Error("problem with graph client", "error", err)
 
 		// increment metric
 		s.sendErrors.Inc()
@@ -50,7 +51,7 @@ func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 		if _, found := slices.BinarySearch(s.allowedSenders, from); !found {
 			err := errors.New("sender not allowed")
 			s.errors = append(s.errors, err)
-			s.logger.Error("problem checking allowed senders", "error", err)
+			s.log().Error("problem checking allowed senders", "error", err)
 
 			// increment metric
 			s.sendDenied.Inc()
@@ -65,7 +66,7 @@ func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 		// Some error creating user object
 		err := errors.New("user not found")
 		s.errors = append(s.errors, err)
-		s.logger.Error("problem getting user", "error", err)
+		s.log().Error("problem getting user", "error", err)
 
 		// increment metric
 		s.sendErrors.Inc()
@@ -89,19 +90,19 @@ func (s *Session) Data(r io.Reader) error {
 	message, err := sendmail.FromMIME(r, env, sendmail.WithSaveToSentItems(s.saveToSentItems))
 	if err != nil {
 		s.errors = append(s.errors, err)
-		s.logger.Error("problem in parsing mail data", "error", err)
+		s.log().Error("problem in parsing mail data", "error", err)
 		// increment metric
 		s.sendErrors.Inc()
 
 		return err
 	}
 
-	s.logger = s.logger.With("message", message)
+	s.msgLogger = s.log().With("message", message)
 
 	// send it
 	if err := message.Send(context.Background(), s.user); err != nil {
 		s.errors = append(s.errors, err)
-		s.logger.Error("problem sending message", "error", err)
+		s.log().Error("problem sending message", "error", err)
 
 		// increment metric
 		s.sendErrors.Inc()
@@ -109,17 +110,35 @@ func (s *Session) Data(r io.Reader) error {
 		return err
 	}
 
-	s.logger.Debug("message sent", "rcpt", s.rcpt)
+	s.log().Debug("message sent", "rcpt", s.rcpt)
 
 	return nil
 }
 
+// Reset discards the current message, so the next message in the session
+// starts with a clean envelope.
 func (s *Session) Reset() {
 	if err := errors.Join(s.errors...); err != nil {
-		s.logger.Error("session ended", "errors", s.errors, "rcpt", s.rcpt)
+		s.log().Error("session ended", "errors", s.errors, "rcpt", s.rcpt)
 	} else {
-		s.logger.Info("session ended", "rcpt", s.rcpt)
+		s.log().Info("session ended", "rcpt", s.rcpt)
 	}
+
+	s.from = ""
+	s.rcpt = nil
+	s.user = nil
+	s.errors = nil
+	s.msgLogger = nil
+}
+
+// log returns the logger for the current message, falling back to the
+// session logger before a message has started.
+func (s *Session) log() *slog.Logger {
+	if s.msgLogger != nil {
+		return s.msgLogger
+	}
+
+	return s.logger
 }
 
 func (s *Session) Logout() error {
