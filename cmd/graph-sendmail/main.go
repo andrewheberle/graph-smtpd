@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"os"
@@ -14,6 +15,10 @@ import (
 )
 
 var Version = "dev"
+
+// exTempFail is sendmail's exit status (EX_TEMPFAIL from sysexits.h) for a
+// failure that may succeed if retried.
+const exTempFail = 75
 
 func main() {
 	// set up flagset
@@ -114,7 +119,7 @@ func main() {
 
 	if err := mailer.Send(ctx, message); err != nil {
 		logger.Error("error sending email", "error", err)
-		os.Exit(1)
+		os.Exit(sendExitCode(err))
 	}
 
 	logger.Info("message sent")
@@ -124,4 +129,14 @@ func main() {
 // environment variables and the parsed command line flags in f.
 func loadConfig(f *pflag.FlagSet) (configger.Config, error) {
 	return configger.LoadConfig(f, configger.WithEnvPrefix("SENDMAIL"))
+}
+
+// sendExitCode returns the exit status for a failed send: 1 when Graph
+// rejected the message, and exTempFail when a retry may succeed.
+func sendExitCode(err error) int {
+	if errors.Is(err, sendmail.ErrRejected) {
+		return 1
+	}
+
+	return exTempFail
 }
