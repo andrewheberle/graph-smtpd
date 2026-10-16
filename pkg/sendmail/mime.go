@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/emersion/go-message"
+	// register charsets beyond UTF-8 and US-ASCII for body and header decoding
+	_ "github.com/emersion/go-message/charset"
 	gomail "github.com/emersion/go-message/mail"
 )
 

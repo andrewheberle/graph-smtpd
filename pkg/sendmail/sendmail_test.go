@@ -292,3 +292,14 @@ func TestFromMIMESinglePartAttachment(t *testing.T) {
 		t.Errorf("attachments = %q, want doc.pdf with PDF content", got)
 	}
 }
+
+func TestFromMIMECharset(t *testing.T) {
+	m := fromFixture(t, "charset.eml", Envelope{From: "alice@example.com"})
+
+	if got, want := *m.message.GetSubject(), "café"; got != want {
+		t.Errorf("subject = %q, want %q", got, want)
+	}
+	if got, _ := body(m); got != "café “quoted”" {
+		t.Errorf("body = %q, want %q", got, "café “quoted”")
+	}
+}
