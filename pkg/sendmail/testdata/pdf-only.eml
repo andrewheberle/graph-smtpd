@@ -1,0 +1,9 @@
+From: alice@example.com
+To: bob@example.com
+Subject: Just a PDF
+MIME-Version: 1.0
+Content-Type: application/pdf; name="doc.pdf"
+Content-Disposition: attachment; filename="doc.pdf"
+Content-Transfer-Encoding: base64
+
+JVBERi0xLjQ=
