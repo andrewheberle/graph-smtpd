@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"strconv"
@@ -102,15 +103,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	// build message from stdin, using headers in place of an envelope
-	message, err := sendmail.FromMIME(os.Stdin, sendmail.Envelope{}, sendmail.WithSaveToSentItems(k.Bool("sentitems")))
+	// build message from stdin, using headers in place of an envelope, and
+	// count its size
+	started := time.Now()
+	stdin := &countingReader{r: os.Stdin}
+	message, err := sendmail.FromMIME(stdin, sendmail.Envelope{}, sendmail.WithSaveToSentItems(k.Bool("sentitems")))
+	_, _ = io.Copy(io.Discard, stdin)
 	if err != nil {
-		logger.Error("unable to read message", "error", err)
+		logResult(logger, nil, "rejected", stdin.n, started, err)
 		os.Exit(1)
 	}
-
-	// add context to logger
-	logger = logger.With("message", message)
 
 	// send email, within the timeout if one is set
 	ctx := context.Background()
@@ -121,11 +123,57 @@ func main() {
 	}
 
 	if err := mailer.Send(ctx, message); err != nil {
-		logger.Error("error sending email", "error", err)
-		os.Exit(sendExitCode(err))
+		code := sendExitCode(err)
+		status := "rejected"
+		if code == exTempFail {
+			status = "deferred"
+		}
+		logResult(logger, message, status, stdin.n, started, err)
+		os.Exit(code)
 	}
 
-	logger.Info("message sent")
+	logResult(logger, message, "sent", stdin.n, started, nil)
+}
+
+// logResult logs the outcome of sending a message as a single "message"
+// line, with the same fields graph-smtpd uses: sent at INFO, otherwise at
+// WARN with the reason. Header details are only logged for debugging.
+func logResult(logger *slog.Logger, message *sendmail.Message, status string, size int64, started time.Time, reason error) {
+	var attrs []any
+	if message != nil {
+		attrs = append(attrs, "from", message.From())
+		if id := message.MessageID(); id != "" {
+			attrs = append(attrs, "message_id", id)
+		}
+	}
+	attrs = append(attrs, "size", size, "status", status)
+	if reason != nil {
+		attrs = append(attrs, "reason", reason.Error())
+	}
+	attrs = append(attrs, "duration", time.Since(started).Round(time.Millisecond).String())
+
+	level := slog.LevelInfo
+	if status != "sent" {
+		level = slog.LevelWarn
+	}
+	logger.Log(context.Background(), level, "message", attrs...)
+
+	if message != nil {
+		logger.Debug("message details", "message", message)
+	}
+}
+
+// countingReader counts the bytes read through it.
+type countingReader struct {
+	r io.Reader
+	n int64
+}
+
+func (c *countingReader) Read(p []byte) (int, error) {
+	n, err := c.r.Read(p)
+	c.n += int64(n)
+
+	return n, err
 }
 
 // loadConfig loads configuration from the config file, SENDMAIL_
