@@ -1,6 +1,7 @@
 # graph-smtpd
 
 [![codecov](https://codecov.io/gh/andrewheberle/graph-smtpd/graph/badge.svg?token=F1QP6YR3GP)](https://codecov.io/gh/andrewheberle/graph-smtpd)
+[![GitHub version](https://badge.fury.io/gh/andrewheberle%2Fgraph-smtpd.svg?icon=si%3Agithub)](https://badge.fury.io/gh/andrewheberle%2Fgraph-smtpd)
 
 This service is a SMTP daemon that will accept emails via SMTP and then submit them via the Microsoft Graph API to Microsoft 365, however in theory the submission process could be generalised to support any API driven email submission service.
 
