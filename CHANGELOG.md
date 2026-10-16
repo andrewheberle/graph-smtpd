@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.12.0](https://github.com/andrewheberle/graph-smtpd/compare/v0.11.0...v0.12.0) (2026-10-16)
+
+
+### Features
+
+* **graph-smtpd:** add --users to enable SMTP AUTH ([2eea129](https://github.com/andrewheberle/graph-smtpd/commit/2eea1294581bcb1e3cb37a4c6bb68cc27c856f95))
+* **graphserver:** load SMTP AUTH users from an htpasswd file ([2eea129](https://github.com/andrewheberle/graph-smtpd/commit/2eea1294581bcb1e3cb37a4c6bb68cc27c856f95))
+* **graphserver:** support SMTP AUTH over TLS ([2eea129](https://github.com/andrewheberle/graph-smtpd/commit/2eea1294581bcb1e3cb37a4c6bb68cc27c856f95))
+
 ## [0.11.0](https://github.com/andrewheberle/graph-smtpd/compare/v0.10.0...v0.11.0) (2026-10-16)
 
 

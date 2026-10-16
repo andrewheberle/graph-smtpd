@@ -39,7 +39,7 @@ docker run -p 25:2525 \
     -e SMTPD_CLIENTID="clientid" \
     -e SMTPD_SECRET="secret" \
     -e SMTPD_TENANTID="tenantid" \
-    ghcr.io/andrewheberle/graph-smtpd:v0.11.0 # x-release-please-version
+    ghcr.io/andrewheberle/graph-smtpd:v0.12.0 # x-release-please-version
 ```
 
 The container listens for SMTP on port 2525 and serves metrics on port 8080.
