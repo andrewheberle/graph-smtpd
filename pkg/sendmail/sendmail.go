@@ -64,6 +64,9 @@ func FromMIME(r io.Reader, env Envelope, opts ...Option) (*Message, error) {
 	if len(env.Rcpt) > 0 {
 		to, cc, bcc = envelopeRecipients(env.Rcpt, to, cc)
 	}
+	if len(to)+len(cc)+len(bcc) == 0 {
+		return nil, fmt.Errorf("message has no recipients")
+	}
 
 	if len(to) > 0 {
 		message.SetToRecipients(newRecipients(to))

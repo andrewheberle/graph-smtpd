@@ -241,3 +241,15 @@ func TestFromMIMEEnvelopeRecipients(t *testing.T) {
 		t.Errorf("bcc = %v, want %v", got, want)
 	}
 }
+
+func TestFromMIMENoRecipients(t *testing.T) {
+	f, err := os.Open(filepath.Join("testdata", "norecipients.eml"))
+	if err != nil {
+		t.Fatalf("could not open fixture: %v", err)
+	}
+	defer func() { _ = f.Close() }()
+
+	if _, err := FromMIME(f, Envelope{}); err == nil {
+		t.Errorf("FromMIME() error = nil, want error")
+	}
+}
