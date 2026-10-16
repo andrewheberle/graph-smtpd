@@ -30,9 +30,10 @@ func (p *relayPolicy) allowSource(addr net.Addr) bool {
 		return true
 	}
 
+	// with a list set, an address that cannot be checked is denied
 	host, _, err := net.SplitHostPort(addr.String())
 	if err != nil {
-		return true
+		return false
 	}
 
 	return p.sources[host]
