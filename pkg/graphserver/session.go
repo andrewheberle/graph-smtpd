@@ -5,7 +5,6 @@ import (
 	"errors"
 	"io"
 	"log/slog"
-	"slices"
 
 	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
 	"github.com/emersion/go-smtp"
@@ -19,7 +18,7 @@ type Session struct {
 	saveToSentItems bool
 	logger          *slog.Logger
 	msgLogger       *slog.Logger
-	allowedSenders  []string
+	policy          *relayPolicy
 	helo            string
 	remote          string
 	errors          []error
@@ -34,17 +33,15 @@ func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 	s.msgLogger = s.log().With("from", from)
 
 	// check that sender is allowed
-	if len(s.allowedSenders) > 0 {
-		if _, found := slices.BinarySearch(s.allowedSenders, from); !found {
-			err := errors.New("sender not allowed")
-			s.errors = append(s.errors, err)
-			s.log().Error("problem checking allowed senders", "error", err)
+	if !s.policy.allowSender(from) {
+		err := errors.New("sender not allowed")
+		s.errors = append(s.errors, err)
+		s.log().Error("problem checking allowed senders", "error", err)
 
-			// increment metric
-			s.sendDenied.Inc()
+		// increment metric
+		s.sendDenied.Inc()
 
-			return err
-		}
+		return err
 	}
 
 	return nil

@@ -13,10 +13,10 @@ func TestSessionResetClearsMessageState(t *testing.T) {
 	var buf bytes.Buffer
 
 	s := &Session{
-		logger:         slog.New(slog.NewJSONHandler(&buf, nil)),
-		allowedSenders: []string{"zoe@example.com"},
-		sendErrors:     prometheus.NewCounter(prometheus.CounterOpts{Name: "errors"}),
-		sendDenied:     prometheus.NewCounter(prometheus.CounterOpts{Name: "denied"}),
+		logger:     slog.New(slog.NewJSONHandler(&buf, nil)),
+		policy:     mustRelayPolicy(t, []string{"zoe@example.com"}, nil),
+		sendErrors: prometheus.NewCounter(prometheus.CounterOpts{Name: "errors"}),
+		sendDenied: prometheus.NewCounter(prometheus.CounterOpts{Name: "denied"}),
 	}
 
 	// a sender not in the allowed list is recorded and then rejected

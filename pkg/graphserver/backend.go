@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net"
 	"slices"
 
 	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
@@ -25,6 +24,7 @@ type Backend struct {
 	logger          *slog.Logger
 	allowedSenders  []string
 	allowedSources  []string
+	policy          *relayPolicy
 
 	reg prometheus.Registerer
 
@@ -48,14 +48,11 @@ func NewBackend(mailer Mailer, opts ...BackendOption) (*Backend, error) {
 		o(b)
 	}
 
-	// set defaults
-	if b.allowedSenders == nil {
-		b.allowedSenders = make([]string, 0)
+	policy, err := newRelayPolicy(b.allowedSenders, b.allowedSources)
+	if err != nil {
+		return nil, err
 	}
-
-	if b.allowedSources == nil {
-		b.allowedSources = make([]string, 0)
-	}
+	b.policy = policy
 
 	// set up metrics
 	b.emailTotal = promauto.With(b.reg).NewCounter(
@@ -83,19 +80,15 @@ func NewBackend(mailer Mailer, opts ...BackendOption) (*Backend, error) {
 // NewSession is called after client greeting (EHLO, HELO).
 func (b *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
 	// Check if IP is allowed
-	if len(b.allowedSources) > 0 {
-		if addr, _, err := net.SplitHostPort(c.Conn().RemoteAddr().String()); err == nil {
-			if _, found := slices.BinarySearch(b.allowedSources, addr); !found {
-				b.sendDenied.Inc()
-				return nil, fmt.Errorf("source not allowed")
-			}
-		}
+	if !b.policy.allowSource(c.Conn().RemoteAddr()) {
+		b.sendDenied.Inc()
+		return nil, fmt.Errorf("source not allowed")
 	}
 
 	// set up new session
 	s := &Session{
 		mailer:          b.mailer,
-		allowedSenders:  b.allowedSenders,
+		policy:          b.policy,
 		saveToSentItems: b.saveToSentItems,
 		helo:            c.Hostname(),
 		remote:          c.Conn().RemoteAddr().String(),
