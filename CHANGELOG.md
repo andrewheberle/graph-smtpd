@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.1](https://github.com/andrewheberle/graph-smtpd/compare/v0.9.0...v0.9.1) (2026-10-16)
+
+
+### Bug Fixes
+
+* **build:** resolve release error ([#118](https://github.com/andrewheberle/graph-smtpd/issues/118)) ([07c4f7d](https://github.com/andrewheberle/graph-smtpd/commit/07c4f7d7c834aa8589103885ef76fdb6993bb13c))
+
 ## [0.9.0](https://github.com/andrewheberle/graph-smtpd/compare/v0.8.3...v0.9.0) (2026-10-16)
 
 
