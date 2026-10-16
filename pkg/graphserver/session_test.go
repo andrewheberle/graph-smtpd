@@ -35,9 +35,6 @@ func TestSessionResetClearsMessageState(t *testing.T) {
 	if len(s.rcpt) != 0 {
 		t.Errorf("rcpt = %v, want empty", s.rcpt)
 	}
-	if len(s.errors) != 0 {
-		t.Errorf("errors = %v, want empty", s.errors)
-	}
 
 	buf.Reset()
 	if err := s.Rcpt("carol@example.com", nil); err != nil {

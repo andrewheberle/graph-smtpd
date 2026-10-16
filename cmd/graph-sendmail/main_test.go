@@ -126,8 +126,10 @@ func TestSendTimeout(t *testing.T) {
 	if !errors.As(err, &exitErr) || exitErr.ExitCode() != 75 {
 		t.Fatalf("exit = %v, want exit status 75", err)
 	}
-	if !strings.Contains(stderr, "context deadline exceeded") {
-		t.Errorf("stderr = %q, want a send timeout", stderr)
+	for _, want := range []string{"msg=message", "status=deferred", "from=alice@example.com", "context deadline exceeded", "duration="} {
+		if !strings.Contains(stderr, want) {
+			t.Errorf("stderr = %q, want it to contain %q", stderr, want)
+		}
 	}
 }
 
@@ -188,5 +190,21 @@ func TestConfigErrorsAreLoggedWhenNotQuiet(t *testing.T) {
 	}
 	if !strings.Contains(stderr, "error loading configuration") {
 		t.Errorf("stderr = %q, want the configuration error", stderr)
+	}
+}
+
+func TestLogsRejectedMessage(t *testing.T) {
+	message := "To: bob@example.com\r\nSubject: no sender\r\n\r\nHello.\r\n"
+
+	stderr, err := runMain(t, message, "--tenantid", "tenant", "--clientid", "client", "--secret", "secret")
+
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) || exitErr.ExitCode() != 1 {
+		t.Fatalf("exit = %v, want exit status 1", err)
+	}
+	for _, want := range []string{"level=WARN", "msg=message", "status=rejected", "size=", "reason=", "no sender"} {
+		if !strings.Contains(stderr, want) {
+			t.Errorf("stderr = %q, want it to contain %q", stderr, want)
+		}
 	}
 }

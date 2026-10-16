@@ -412,6 +412,10 @@ if send_case S1 "$(render "$MESSAGES/s1-plain.eml")" "$RCPT_A"; then
   record S12 PASS "started and delivered using SMTPD_SECRET_FILE"
   step "In mailbox A, open \"[$TAG] S1 plain text\"."
   check S1 "Did it arrive, with the body text intact?"
+  say ""
+  step "View that message's headers (Outlook: File → Properties, or View message source)."
+  say "Look for: Message-ID: <$TAG.s1@smoke-test.local>"
+  check S15 "Does the Message-ID header match exactly?"
 else
   record S12 FAIL "first send failed; check the secret and permissions in smtpd.log"
 fi

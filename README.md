@@ -84,7 +84,21 @@ Clients see these replies when a message is not accepted:
 
 Recipients are taken from the SMTP envelope (`RCPT TO`): addresses in the `To` or `Cc` headers that are not envelope recipients are not sent to, and envelope recipients that are not in those headers are sent as Bcc.
 
-### Metrics
+### Logging
+
+graph-smtpd logs JSON to standard error. Every message the relay is offered gets one `message` line once its outcome is known, so the log shows what happened to each message and why:
+
+```json
+{"level":"INFO","msg":"message","conn":"57347a255e","client":"10.0.0.5:51544","helo":"printer01","tls":true,"id":"57347a255e.1","from":"scanner@contoso.com","rcpt":["a@contoso.com"],"size":48211,"message_id":"<abc123@printer01>","status":"sent","reply":"250 2.0.0 OK: queued","duration":"812ms"}
+```
+
+* `status` is `sent`, `rejected` (refused permanently), `deferred` (refused temporarily, so the client should retry) or `abandoned` (the client gave up before sending the message)
+* `reply` is the SMTP reply the client received, and `reason` the underlying error for anything not sent
+* `conn` ties together the lines for one connection, including `connect`, `starttls` and `disconnect` lines; `id` numbers the messages on it
+* `message_id` is the message's `Message-ID` header, which is passed to Microsoft 365 so the message can be found in Exchange message trace
+
+Sent and abandoned messages are logged at `INFO`, and rejected and deferred messages at `WARN`. Subjects and header recipients are only logged with `--debug`.
+
 
 When `--metrics` is set, the following counters are available alongside the standard Go and process metrics:
 
@@ -164,4 +178,3 @@ The following are covered by unit tests, and most are also checked against Micro
 * SMTP authentication
 * Allow running as a service on Windows
 * Test with wider variety of devices
-* Make logging better

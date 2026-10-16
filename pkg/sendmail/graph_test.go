@@ -1,11 +1,14 @@
 package sendmail
 
 import (
+	"compress/gzip"
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/microsoft/kiota-abstractions-go/authentication"
@@ -118,5 +121,51 @@ func TestGraphMailerSendNetworkErrorIsTemporary(t *testing.T) {
 	}
 	if errors.Is(err, ErrRejected) {
 		t.Errorf("errors.Is(err, ErrRejected) = true, want false (err = %v)", err)
+	}
+}
+
+func TestGraphMailerSendsInternetMessageID(t *testing.T) {
+	var body []byte
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// the Graph SDK compresses request bodies
+		reader := io.Reader(r.Body)
+		if r.Header.Get("Content-Encoding") == "gzip" {
+			gz, err := gzip.NewReader(r.Body)
+			if err != nil {
+				t.Errorf("could not decompress request: %v", err)
+				return
+			}
+			reader = gz
+		}
+		body, _ = io.ReadAll(reader)
+		w.WriteHeader(http.StatusAccepted)
+	}))
+	t.Cleanup(srv.Close)
+
+	adapter, err := graph.NewGraphRequestAdapter(&authentication.AnonymousAuthenticationProvider{})
+	if err != nil {
+		t.Fatalf("could not create request adapter: %v", err)
+	}
+	adapter.SetBaseUrl(srv.URL + "/v1.0")
+	mailer := newGraphMailer(graph.NewGraphServiceClient(adapter))
+
+	m, err := FromMIME(strings.NewReader("From: alice@example.com\nTo: bob@example.com\nMessage-ID: <abc123@example.com>\n\nHello.\n"), Envelope{})
+	if err != nil {
+		t.Fatalf("FromMIME() error = %v", err)
+	}
+	if err := mailer.Send(context.Background(), m); err != nil {
+		t.Fatalf("Send() error = %v", err)
+	}
+
+	var request struct {
+		Message struct {
+			InternetMessageID string `json:"internetMessageId"`
+		} `json:"message"`
+	}
+	if err := json.Unmarshal(body, &request); err != nil {
+		t.Fatalf("request body is not JSON: %v: %s", err, body)
+	}
+	if request.Message.InternetMessageID != "<abc123@example.com>" {
+		t.Errorf("internetMessageId = %q, want %q; body: %s", request.Message.InternetMessageID, "<abc123@example.com>", body)
 	}
 }
