@@ -177,4 +177,3 @@ The following are covered by unit tests, and most are also checked against Micro
 
 * SMTP authentication
 * Allow running as a service on Windows
-* Test with wider variety of devices
