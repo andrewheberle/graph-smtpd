@@ -43,9 +43,13 @@ func FromMIME(r io.Reader, env Envelope, opts ...Option) (*Message, error) {
 
 	header := msg.Header
 
+	// without an envelope sender use the address from the From header
 	from := env.From
+	if from == "" && len(msg.From) > 0 {
+		from = msg.From[0].Address
+	}
 	if from == "" {
-		from = header.Get("From")
+		return nil, fmt.Errorf("message has no sender")
 	}
 
 	message := graphmodels.NewMessage()

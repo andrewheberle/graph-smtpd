@@ -162,3 +162,23 @@ func TestFromMIMESaveToSentItems(t *testing.T) {
 		}
 	}
 }
+
+func TestFromMIMEHeaderSender(t *testing.T) {
+	m := fromFixture(t, "plain.eml", Envelope{})
+
+	if got, want := m.From(), "alice@example.com"; got != want {
+		t.Errorf("From() = %q, want %q", got, want)
+	}
+}
+
+func TestFromMIMENoSender(t *testing.T) {
+	f, err := os.Open(filepath.Join("testdata", "nosender.eml"))
+	if err != nil {
+		t.Fatalf("could not open fixture: %v", err)
+	}
+	defer func() { _ = f.Close() }()
+
+	if _, err := FromMIME(f, Envelope{}); err == nil {
+		t.Errorf("FromMIME() error = nil, want error")
+	}
+}
