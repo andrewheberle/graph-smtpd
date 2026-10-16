@@ -516,8 +516,9 @@ if [[ -z "$DENIED_BY_GRAPH" ]]; then
   record S11 SKIP "no mailbox outside the ApplicationAccessPolicy given"
 else
   say "Sending as $DENIED_BY_GRAPH, which graph-smtpd allows but Graph should refuse."
-  note "Expected: 451 (temporary), by design, so clients retry rather than drop mail."
-  expect_reply S11 451 "$SMTP_PORT" "$DENIED_BY_GRAPH" "$(render "$MESSAGES/s1-plain.eml")" "$RCPT_A"
+  note "Expected: 550 (permanent), since Graph answers 403 ErrorAccessDenied, so"
+  note "clients bounce the message instead of retrying it."
+  expect_reply S11 550 "$SMTP_PORT" "$DENIED_BY_GRAPH" "$(render "$MESSAGES/s1-plain.eml")" "$RCPT_A"
   note "Graph's error, from smtpd.log:"
   grep -o '"error":"[^"]*"' "$RUN_DIR/smtpd.log" | tail -n1 | sed 's/^/    /' || true
 fi
