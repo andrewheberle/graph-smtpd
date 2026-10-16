@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -55,6 +56,9 @@ func main() {
 	f.String("cert", "", "TLS certificate for STARTTLS")
 	f.String("key", "", "TLS key for STARTTLS")
 
+	// SMTP AUTH
+	f.String("users", "", "File of SMTP AUTH users in htpasswd format, with bcrypt hashes (requires --cert and --key)")
+
 	// Entra ID options
 	f.String("clientid", "", "App Registration Client/Application ID")
 	f.String("tenantid", "", "App Registration Tenant ID")
@@ -99,6 +103,17 @@ func main() {
 		graphserver.WithSaveToSentItems(k.Bool("sentitems")),
 		graphserver.WithSendTimeout(k.Duration("timeout")),
 		graphserver.WithLogger(logger),
+	}
+
+	// load SMTP AUTH users
+	users, err := loadUsers(k)
+	if err != nil {
+		logger.Error("error loading users", "error", err)
+		os.Exit(1)
+	}
+	if users != nil {
+		opts = append(opts, graphserver.WithUsers(users))
+		logger.Info("smtp auth enabled", "users", users.Len(), "file", k.String("users"))
 	}
 
 	// set up run group
@@ -253,4 +268,19 @@ func newTLS(cert, key string) (*fswatcher.Sentinel, *tls.Config, error) {
 	}
 
 	return sentinel, &tls.Config{GetCertificate: sentinel.GetCertificate}, nil
+}
+
+// loadUsers loads the SMTP AUTH users file named by the "users" option, or
+// returns nil if there is none. AUTH is only allowed over TLS, so a users
+// file needs a certificate and key.
+func loadUsers(k configger.Config) (*graphserver.Users, error) {
+	path := k.String("users")
+	if path == "" {
+		return nil, nil
+	}
+	if k.String("cert") == "" || k.String("key") == "" {
+		return nil, errors.New("--users needs --cert and --key, as SMTP AUTH is only allowed over TLS")
+	}
+
+	return graphserver.LoadUsers(path)
 }
