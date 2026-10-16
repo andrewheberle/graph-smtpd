@@ -1,5 +1,7 @@
 # graph-smtpd
 
+[![codecov](https://codecov.io/gh/andrewheberle/graph-smtpd/graph/badge.svg?token=F1QP6YR3GP)](https://codecov.io/gh/andrewheberle/graph-smtpd)
+
 This service is a SMTP daemon that will accept emails via SMTP and then submit them via the Microsoft Graph API to Microsoft 365, however in theory the submission process could be generalised to support any API driven email submission service.
 
 The idea is to allow this service to run locally and accept emails from devices/systems that cannot support the modern authentication requirements of Exchange Online, such as OAuth2, and then relay them securely to Microsoft 365.
