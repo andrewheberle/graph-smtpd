@@ -275,3 +275,21 @@ func TestBackendEmailTotalExcludesFailedSends(t *testing.T) {
 		t.Errorf("email total = %v, want 0", got)
 	}
 }
+
+func TestNewBackendLeavesAllowListsUnchanged(t *testing.T) {
+	senders := []string{"zoe@example.com", "alice@example.com"}
+	sources := []string{"192.0.2.9", "192.0.2.1"}
+	wantSenders := slices.Clone(senders)
+	wantSources := slices.Clone(sources)
+
+	if _, err := NewBackend(&fakeMailer{}, WithAllowedSenders(senders), WithAllowedSources(sources)); err != nil {
+		t.Fatalf("NewBackend() error = %v", err)
+	}
+
+	if !slices.Equal(senders, wantSenders) {
+		t.Errorf("senders = %v, want unchanged %v", senders, wantSenders)
+	}
+	if !slices.Equal(sources, wantSources) {
+		t.Errorf("sources = %v, want unchanged %v", sources, wantSources)
+	}
+}

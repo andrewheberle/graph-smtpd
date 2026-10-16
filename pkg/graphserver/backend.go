@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"slices"
 
 	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
 	"github.com/emersion/go-smtp"
@@ -115,27 +114,19 @@ func WithSaveToSentItems(save bool) BackendOption {
 	}
 }
 
+// WithAllowedSenders limits which sender addresses may send. An empty list
+// allows any sender.
 func WithAllowedSenders(senders []string) BackendOption {
 	return func(b *Backend) {
-		if senders == nil {
-			b.allowedSenders = make([]string, 0)
-		} else {
-			// make sure it's sorted
-			slices.Sort(senders)
-			b.allowedSenders = senders
-		}
+		b.allowedSenders = senders
 	}
 }
 
+// WithAllowedSources limits which client IP addresses may relay. An empty
+// list allows any source.
 func WithAllowedSources(sources []string) BackendOption {
 	return func(b *Backend) {
-		if sources == nil {
-			b.allowedSources = make([]string, 0)
-		} else {
-			// make sure it's sorted
-			slices.Sort(sources)
-			b.allowedSources = sources
-		}
+		b.allowedSources = sources
 	}
 }
 
