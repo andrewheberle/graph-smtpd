@@ -10,6 +10,8 @@ github.com/AzureAD/microsoft-authentication-extensions-for-go/cache v0.1.1 h1:WJ
 github.com/AzureAD/microsoft-authentication-extensions-for-go/cache v0.1.1/go.mod h1:tCcJZ0uHAmvjsVYzEFivsRTN00oz5BEsRgQHu5JZ9WE=
 github.com/AzureAD/microsoft-authentication-library-for-go v1.7.2 h1:RHK7bS+HQMslb1sZpAokUt+zTVmue0hKSs2C791hhzU=
 github.com/AzureAD/microsoft-authentication-library-for-go v1.7.2/go.mod h1:HKpQxkWaGLJ+D/5H8QRpyQXA1eKjxkFlOMwck5+33Jk=
+github.com/andrewheberle/configger v0.1.1 h1:3PNzb7EG5/h4MFbK2GreD10LtbNGsn+SyQQQmvpya/k=
+github.com/andrewheberle/configger v0.1.1/go.mod h1:g2dLidWC7ed90kNz7jTQgvAUikijg8oIidB0r5Q7+PQ=
 github.com/andrewheberle/redacted-string v1.1.0 h1:aB90v9RCoyshfHmR+gh18Sb+sOCWZX//z9yaprj4VC4=
 github.com/andrewheberle/redacted-string v1.1.0/go.mod h1:A+qjv0GQYSYXhyNrS1wIsJPO5Sid3XmvCTDiacFytbE=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
