@@ -1,19 +1,26 @@
 package graphserver
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
 	"slices"
 
-	"github.com/andrewheberle/graph-smtpd/pkg/graphclient"
+	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
 	"github.com/emersion/go-smtp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
+// Mailer delivers a Message.
+type Mailer interface {
+	Send(ctx context.Context, m *sendmail.Message) error
+}
+
 type Backend struct {
-	client          *graphclient.Client
+	mailer          Mailer
 	saveToSentItems bool
 	logger          *slog.Logger
 	allowedSenders  []string
@@ -27,26 +34,19 @@ type Backend struct {
 	sendDenied prometheus.Counter
 }
 
-// NewGraphBackend sets up a new server
-func NewGraphBackend(clientId, tenantId, secret string, opts ...BackendOption) (*Backend, error) {
-	return newbackend(clientId, tenantId, secret, opts...)
-}
+// NewBackend sets up a new SMTP backend that delivers each message using
+// mailer.
+func NewBackend(mailer Mailer, opts ...BackendOption) (*Backend, error) {
+	if mailer == nil {
+		return nil, errors.New("mailer must not be nil")
+	}
 
-func newbackend(clientId, tenantId, secret string, opts ...BackendOption) (*Backend, error) {
-	b := new(Backend)
+	b := &Backend{mailer: mailer}
 
 	// apply options
 	for _, o := range opts {
 		o(b)
 	}
-
-	// create graph client
-	client, err := graphclient.NewClient(tenantId, clientId, secret)
-	if err != nil {
-		return nil, fmt.Errorf("could not create client: %w", err)
-	}
-
-	b.client = client
 
 	// set defaults
 	if b.allowedSenders == nil {
@@ -97,7 +97,7 @@ func (b *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
 
 	// set up new session
 	s := &Session{
-		client:          b.client,
+		mailer:          b.mailer,
 		allowedSenders:  b.allowedSenders,
 		saveToSentItems: b.saveToSentItems,
 		helo:            c.Hostname(),

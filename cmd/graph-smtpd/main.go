@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/andrewheberle/graph-smtpd/pkg/graphserver"
+	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
 	"github.com/andrewheberle/redacted-string"
 	"github.com/cloudflare/certinel/fswatcher"
 	"github.com/emersion/go-smtp"
@@ -187,15 +188,22 @@ func main() {
 		}
 	}
 
-	// create backend
-	be, err := graphserver.NewGraphBackend(k.String("clientid"), k.String("tenantid"), k.String("secret"), opts...)
+	// create graph mailer
+	mailer, err := sendmail.NewGraphMailer(k.String("tenantid"), k.String("clientid"), k.String("secret"))
 	if err != nil {
-		logger.Error("error setting up backend",
+		logger.Error("error setting up graph mailer",
 			"error", err,
 			"clientid", k.String("clientid"),
 			"tenantid", k.String("tenantid"),
 			"secret", redacted.Redact(k.String("secret")),
 		)
+		os.Exit(1)
+	}
+
+	// create backend
+	be, err := graphserver.NewBackend(mailer, opts...)
+	if err != nil {
+		logger.Error("error setting up backend", "error", err)
 		os.Exit(1)
 	}
 

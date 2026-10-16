@@ -13,12 +13,13 @@ func TestSessionResetClearsMessageState(t *testing.T) {
 	var buf bytes.Buffer
 
 	s := &Session{
-		logger:     slog.New(slog.NewJSONHandler(&buf, nil)),
-		sendErrors: prometheus.NewCounter(prometheus.CounterOpts{Name: "errors"}),
-		sendDenied: prometheus.NewCounter(prometheus.CounterOpts{Name: "denied"}),
+		logger:         slog.New(slog.NewJSONHandler(&buf, nil)),
+		allowedSenders: []string{"zoe@example.com"},
+		sendErrors:     prometheus.NewCounter(prometheus.CounterOpts{Name: "errors"}),
+		sendDenied:     prometheus.NewCounter(prometheus.CounterOpts{Name: "denied"}),
 	}
 
-	// with no graph client Mail records the sender and then fails
+	// a sender not in the allowed list is recorded and then rejected
 	if err := s.Mail("alice@example.com", nil); err == nil {
 		t.Fatalf("Mail() error = nil, want error")
 	}

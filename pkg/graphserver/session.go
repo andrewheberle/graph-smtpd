@@ -7,18 +7,15 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/andrewheberle/graph-smtpd/pkg/graphclient"
 	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
 	"github.com/emersion/go-smtp"
-	graphusers "github.com/microsoftgraph/msgraph-sdk-go/users"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 type Session struct {
 	from            string
 	rcpt            []string
-	user            *graphusers.UserItemRequestBuilder
-	client          *graphclient.Client
+	mailer          Mailer
 	saveToSentItems bool
 	logger          *slog.Logger
 	msgLogger       *slog.Logger
@@ -35,17 +32,6 @@ func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 	s.from = from
 	s.msgLogger = s.log().With("from", from)
 
-	if s.client == nil {
-		err := errors.New("graph client not initialised")
-		s.errors = append(s.errors, err)
-		s.log().Error("problem with graph client", "error", err)
-
-		// increment metric
-		s.sendErrors.Inc()
-
-		return err
-	}
-
 	// check that sender is allowed
 	if len(s.allowedSenders) > 0 {
 		if _, found := slices.BinarySearch(s.allowedSenders, from); !found {
@@ -60,21 +46,6 @@ func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 		}
 	}
 
-	// get UserItemRequestBuilder
-	user := s.client.Users().ByUserId(from)
-	if user == nil {
-		// Some error creating user object
-		err := errors.New("user not found")
-		s.errors = append(s.errors, err)
-		s.log().Error("problem getting user", "error", err)
-
-		// increment metric
-		s.sendErrors.Inc()
-
-		return err
-	}
-
-	s.user = user
 	return nil
 }
 
@@ -100,7 +71,7 @@ func (s *Session) Data(r io.Reader) error {
 	s.msgLogger = s.log().With("message", message)
 
 	// send it
-	if err := message.Send(context.Background(), s.user); err != nil {
+	if err := s.mailer.Send(context.Background(), message); err != nil {
 		s.errors = append(s.errors, err)
 		s.log().Error("problem sending message", "error", err)
 
@@ -126,7 +97,6 @@ func (s *Session) Reset() {
 
 	s.from = ""
 	s.rcpt = nil
-	s.user = nil
 	s.errors = nil
 	s.msgLogger = nil
 }
