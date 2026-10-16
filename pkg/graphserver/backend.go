@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
@@ -16,13 +17,44 @@ import (
 // changed with WithSendTimeout.
 const DefaultSendTimeout = 30 * time.Second
 
-// errDeliveryFailed is returned when the Mailer fails. It is temporary (451
-// 4.4.1) so the client retries rather than dropping the message; the cause
+// errDeliveryFailed is returned when the Mailer fails temporarily. It is 451
+// 4.4.1, so the client retries rather than dropping the message; the cause
 // is logged rather than returned to the client.
 var errDeliveryFailed = &smtp.SMTPError{
 	Code:         451,
 	EnhancedCode: smtp.EnhancedCode{4, 4, 1},
 	Message:      "temporary failure delivering message, try again later",
+}
+
+// deliveryError returns the SMTP reply for a Mailer failure: permanent when
+// Graph rejected the message, so the client stops retrying, and temporary
+// otherwise. Graph's error code is included, but not its message.
+func deliveryError(err error) error {
+	var rejected *sendmail.RejectedError
+	if !errors.As(err, &rejected) {
+		return errDeliveryFailed
+	}
+
+	reply := &smtp.SMTPError{
+		Code:         554,
+		EnhancedCode: smtp.EnhancedCode{5, 0, 0},
+		Message:      "delivery refused by Microsoft Graph",
+	}
+	switch rejected.StatusCode {
+	case http.StatusForbidden:
+		// the app may not send as this mailbox
+		reply.Code, reply.EnhancedCode = 550, smtp.EnhancedCode{5, 7, 1}
+	case http.StatusNotFound:
+		// the mailbox does not exist
+		reply.Code, reply.EnhancedCode = 550, smtp.EnhancedCode{5, 1, 1}
+	case http.StatusRequestEntityTooLarge:
+		reply.Code, reply.EnhancedCode = 552, smtp.EnhancedCode{5, 3, 4}
+	}
+	if rejected.Code != "" {
+		reply.Message += " (" + rejected.Code + ")"
+	}
+
+	return reply
 }
 
 // Mailer delivers a Message.

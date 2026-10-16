@@ -103,8 +103,8 @@ func (s *Session) Data(r io.Reader) error {
 		// increment metric
 		s.sendErrors.Inc()
 
-		// delivery may succeed later, so ask the client to retry
-		return errDeliveryFailed
+		// ask the client to retry unless Graph rejected the message outright
+		return deliveryError(err)
 	}
 
 	// increment metric
