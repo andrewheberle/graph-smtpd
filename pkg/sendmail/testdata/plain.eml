@@ -1,0 +1,8 @@
+From: Alice Example <alice@example.com>
+To: Bob <bob@example.com>, carol@example.com
+Cc: Dave <dave@example.com>
+Bcc: erin@example.com
+Subject: Plain text
+Content-Type: text/plain; charset=utf-8
+
+Hello Bob.

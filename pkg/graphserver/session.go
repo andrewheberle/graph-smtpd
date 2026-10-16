@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"slices"
 
-	"github.com/OfimaticSRL/parsemail"
 	"github.com/andrewheberle/graph-smtpd/pkg/graphclient"
 	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
 	"github.com/emersion/go-smtp"
@@ -85,8 +84,9 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 }
 
 func (s *Session) Data(r io.Reader) error {
-	// parse incoming message
-	msg, err := parsemail.Parse(r)
+	// build message from incoming data
+	env := sendmail.Envelope{From: s.from, Rcpt: s.rcpt}
+	message, err := sendmail.FromMIME(r, env, sendmail.WithSaveToSentItems(s.saveToSentItems))
 	if err != nil {
 		s.errors = append(s.errors, err)
 		s.logger.Error("problem in parsing mail data", "error", err)
@@ -96,37 +96,7 @@ func (s *Session) Data(r io.Reader) error {
 		return err
 	}
 
-	// grab headers and content
-	header := msg.Header
-	subject := header.Get("Subject")
-	from := s.from
-	to := header.Get("To")
-	cc := header.Get("Cc")
-	bcc := header.Get("Bcc")
-	s.logger = s.logger.With(
-		"subject", subject,
-		"to", to,
-		"cc", cc,
-		"bcc", bcc,
-	)
-
-	// message options
-	opts := []sendmail.MessageOption{
-		sendmail.WithCc(cc),
-		sendmail.WithBcc(bcc),
-		sendmail.WithAttachments(msg.Attachments),
-		sendmail.WithSaveToSentItems(s.saveToSentItems),
-	}
-
-	// handle HTML or text bodies
-	if msg.TextBody == "" {
-		opts = append(opts, sendmail.WithBody(msg.HTMLBody), sendmail.WithHTMLContent())
-	} else if msg.HTMLBody == "" {
-		opts = append(opts, sendmail.WithBody(msg.TextBody))
-	}
-
-	// create message to send
-	message := sendmail.NewMessage(from, to, subject, opts...)
+	s.logger = s.logger.With("message", message)
 
 	// send it
 	if err := message.Send(context.Background(), s.user); err != nil {
