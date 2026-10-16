@@ -60,6 +60,7 @@ func TestRelayPolicyAllowSender(t *testing.T) {
 		{"empty list allows all", nil, "alice@example.com", true},
 		{"listed sender", []string{"alice@example.com", "bob@example.com"}, "bob@example.com", true},
 		{"unlisted sender", []string{"alice@example.com"}, "mallory@example.com", false},
+		{"sender differs in case", []string{"Alice@Example.com"}, "alice@EXAMPLE.com", true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

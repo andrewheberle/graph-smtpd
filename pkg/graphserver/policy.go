@@ -1,6 +1,9 @@
 package graphserver
 
-import "net"
+import (
+	"net"
+	"strings"
+)
 
 // relayPolicy decides which sources may connect and which senders may send.
 // An empty list allows everything.
@@ -15,7 +18,7 @@ func newRelayPolicy(senders, sources []string) (*relayPolicy, error) {
 		sources: make(map[string]bool, len(sources)),
 	}
 	for _, s := range senders {
-		p.senders[s] = true
+		p.senders[strings.ToLower(s)] = true
 	}
 	for _, s := range sources {
 		p.sources[s] = true
@@ -39,11 +42,12 @@ func (p *relayPolicy) allowSource(addr net.Addr) bool {
 	return p.sources[host]
 }
 
-// allowSender reports whether from may send through the relay.
+// allowSender reports whether from may send through the relay. Addresses
+// are compared case-insensitively.
 func (p *relayPolicy) allowSender(from string) bool {
 	if len(p.senders) == 0 {
 		return true
 	}
 
-	return p.senders[from]
+	return p.senders[strings.ToLower(from)]
 }
