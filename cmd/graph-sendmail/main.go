@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/andrewheberle/configger"
+	"github.com/andrewheberle/graph-smtpd/internal/cli"
 	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
 	"github.com/spf13/pflag"
 )
@@ -62,7 +63,7 @@ func main() {
 	}))
 
 	// load config file, env vars and command line options
-	k, err := configger.LoadConfig(f, configger.WithEnvPrefix("SENDMAIL"))
+	k, err := loadConfig(f)
 	if err != nil {
 		logger.Error("error loading configuration", "error", err)
 		os.Exit(1)
@@ -77,8 +78,15 @@ func main() {
 		}
 	}
 
+	// get credentials, falling back to a secret file when no secret is set
+	tenantID, clientID, secret, err := cli.Credentials(k)
+	if err != nil {
+		logger.Error("could not load secret", "error", err)
+		os.Exit(1)
+	}
+
 	// create graph mailer
-	mailer, err := sendmail.NewGraphMailer(credentials(k))
+	mailer, err := sendmail.NewGraphMailer(tenantID, clientID, secret)
 	if err != nil {
 		slog.Error("could not create graph mailer", "error", err)
 		os.Exit(1)
@@ -103,8 +111,8 @@ func main() {
 	logger.Info("message sent")
 }
 
-// credentials returns the Entra ID tenant ID, client ID and client secret
-// from the loaded configuration.
-func credentials(k configger.Config) (tenantID, clientID, secret string) {
-	return k.String("tenantid"), k.String("clientid"), k.String("secret")
+// loadConfig loads configuration from the config file, SENDMAIL_
+// environment variables and the parsed command line flags in f.
+func loadConfig(f *pflag.FlagSet) (configger.Config, error) {
+	return configger.LoadConfig(f, configger.WithEnvPrefix("SENDMAIL"))
 }
