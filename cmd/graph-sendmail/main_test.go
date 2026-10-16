@@ -148,3 +148,45 @@ func TestSendExitCode(t *testing.T) {
 		})
 	}
 }
+
+func TestQuietSilencesConfigErrors(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "missing.yaml")
+
+	tests := []struct {
+		name string
+		env  string
+		args []string
+	}{
+		{"quiet flag", "", []string{"--quiet", "--config", missing}},
+		{"quiet env var", "true", []string{"--config", missing}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.env != "" {
+				t.Setenv("SENDMAIL_QUIET", tt.env)
+			}
+
+			stderr, err := runMain(t, "", tt.args...)
+
+			var exitErr *exec.ExitError
+			if !errors.As(err, &exitErr) || exitErr.ExitCode() != 1 {
+				t.Fatalf("exit = %v, want exit status 1", err)
+			}
+			if stderr != "" {
+				t.Errorf("stderr = %q, want nothing when quiet", stderr)
+			}
+		})
+	}
+}
+
+func TestConfigErrorsAreLoggedWhenNotQuiet(t *testing.T) {
+	stderr, err := runMain(t, "", "--config", filepath.Join(t.TempDir(), "missing.yaml"))
+
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) || exitErr.ExitCode() != 1 {
+		t.Fatalf("exit = %v, want exit status 1", err)
+	}
+	if !strings.Contains(stderr, "error loading configuration") {
+		t.Errorf("stderr = %q, want the configuration error", stderr)
+	}
+}
