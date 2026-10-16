@@ -64,13 +64,13 @@ func FromMIME(r io.Reader, env Envelope, opts ...Option) (*Message, error) {
 		message.SetBccRecipients(addrs)
 	}
 
-	// handle HTML or text bodies
+	// Graph takes a single body, so prefer HTML and fall back to text
 	body := graphmodels.NewItemBody()
-	if msg.TextBody == "" {
+	if msg.HTMLBody != "" {
 		contentType := graphmodels.HTML_BODYTYPE
 		body.SetContent(&msg.HTMLBody)
 		body.SetContentType(&contentType)
-	} else if msg.HTMLBody == "" {
+	} else {
 		body.SetContent(&msg.TextBody)
 	}
 	message.SetBody(body)

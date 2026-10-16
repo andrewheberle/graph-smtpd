@@ -85,6 +85,18 @@ func TestFromMIME(t *testing.T) {
 			wantBcc:     []string{},
 			wantBody:    "See attached.",
 		},
+		{
+			name:        "text and html prefers html",
+			fixture:     "alternative.eml",
+			env:         Envelope{From: "alice@example.com"},
+			wantFrom:    "alice@example.com",
+			wantSubject: "Text and HTML",
+			wantTo:      []string{"bob@example.com"},
+			wantCc:      []string{},
+			wantBcc:     []string{},
+			wantBody:    "<p>Hello Bob.</p>",
+			wantHTML:    true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
