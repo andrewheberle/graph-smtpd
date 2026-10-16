@@ -222,3 +222,22 @@ func TestFromMIMEInlineAttachments(t *testing.T) {
 		t.Errorf("content = %q, want PNG signature", got)
 	}
 }
+
+func TestFromMIMEEnvelopeRecipients(t *testing.T) {
+	// plain.eml headers: To bob, carol; Cc dave; Bcc erin
+	env := Envelope{
+		From: "alice@example.com",
+		Rcpt: []string{"BOB@example.com", "dave@example.com", "frank@example.com", "Frank@example.com"},
+	}
+	m := fromFixture(t, "plain.eml", env)
+
+	if got, want := addresses(m.message.GetToRecipients()), []string{"bob@example.com"}; !slices.Equal(got, want) {
+		t.Errorf("to = %v, want %v", got, want)
+	}
+	if got, want := addresses(m.message.GetCcRecipients()), []string{"dave@example.com"}; !slices.Equal(got, want) {
+		t.Errorf("cc = %v, want %v", got, want)
+	}
+	if got, want := addresses(m.message.GetBccRecipients()), []string{"frank@example.com"}; !slices.Equal(got, want) {
+		t.Errorf("bcc = %v, want %v", got, want)
+	}
+}

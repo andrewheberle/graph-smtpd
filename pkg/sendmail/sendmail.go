@@ -58,14 +58,21 @@ func FromMIME(r io.Reader, env Envelope, opts ...Option) (*Message, error) {
 	message.SetSubject(&subject)
 	message.SetFrom(newRecipient(from))
 
-	if addrs := parseAddressList(header.Get("To")); len(addrs) > 0 {
-		message.SetToRecipients(addrs)
+	to := parseAddressList(header.Get("To"))
+	cc := parseAddressList(header.Get("Cc"))
+	bcc := parseAddressList(header.Get("Bcc"))
+	if len(env.Rcpt) > 0 {
+		to, cc, bcc = envelopeRecipients(env.Rcpt, to, cc)
 	}
-	if addrs := parseAddressList(header.Get("Cc")); len(addrs) > 0 {
-		message.SetCcRecipients(addrs)
+
+	if len(to) > 0 {
+		message.SetToRecipients(newRecipients(to))
 	}
-	if addrs := parseAddressList(header.Get("Bcc")); len(addrs) > 0 {
-		message.SetBccRecipients(addrs)
+	if len(cc) > 0 {
+		message.SetCcRecipients(newRecipients(cc))
+	}
+	if len(bcc) > 0 {
+		message.SetBccRecipients(newRecipients(bcc))
 	}
 
 	// Graph takes a single body, so prefer HTML and fall back to text
@@ -205,23 +212,68 @@ func addresses(recipients []graphmodels.Recipientable) []string {
 	return list
 }
 
-func parseAddressList(addresses string) []graphmodels.Recipientable {
-	recipientList := []graphmodels.Recipientable{}
+// envelopeRecipients makes the envelope authoritative for delivery: the To
+// and Cc headers are kept only where the address is also an envelope
+// recipient, and any envelope recipient not in those headers becomes a Bcc
+// recipient. Addresses are compared case-insensitively.
+func envelopeRecipients(rcpt, to, cc []string) (envTo, envCc, envBcc []string) {
+	pending := make(map[string]bool, len(rcpt))
+	for _, r := range rcpt {
+		pending[strings.ToLower(r)] = true
+	}
+
+	// keep header recipients that are in the envelope, removing each from
+	// pending so it is only delivered once
+	keep := func(addrs []string) []string {
+		kept := []string{}
+		for _, a := range addrs {
+			if key := strings.ToLower(a); pending[key] {
+				kept = append(kept, a)
+				delete(pending, key)
+			}
+		}
+
+		return kept
+	}
+	envTo = keep(to)
+	envCc = keep(cc)
+
+	envBcc = []string{}
+	for _, r := range rcpt {
+		if key := strings.ToLower(r); pending[key] {
+			envBcc = append(envBcc, r)
+			delete(pending, key)
+		}
+	}
+
+	return envTo, envCc, envBcc
+}
+
+func newRecipients(addresses []string) []graphmodels.Recipientable {
+	recipients := make([]graphmodels.Recipientable, 0, len(addresses))
+	for _, a := range addresses {
+		recipients = append(recipients, newRecipient(a))
+	}
+
+	return recipients
+}
+
+func parseAddressList(addresses string) []string {
+	list := []string{}
 
 	if addresses == "" {
-		return recipientList
+		return list
 	}
 
 	// Split the address list by commas, trim spaces and parse as valid email address
-	list := strings.Split(addresses, ",")
-	for i := range list {
-		a, err := mail.ParseAddress(strings.TrimSpace(list[i]))
+	for _, s := range strings.Split(addresses, ",") {
+		a, err := mail.ParseAddress(strings.TrimSpace(s))
 		if err != nil {
 			continue
 		}
 
-		recipientList = append(recipientList, newRecipient(a.Address))
+		list = append(list, a.Address)
 	}
 
-	return recipientList
+	return list
 }
