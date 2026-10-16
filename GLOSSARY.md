@@ -5,3 +5,5 @@
 **Message**: the Microsoft Graph `sendMail` payload (`sendmail.Message`): sender, recipients, subject, body, attachments and the save-to-Sent-Items flag.
 
 **Message intake**: turning a raw MIME message plus its Envelope into a Message (`sendmail.FromMIME`). Both `graph-smtpd` and `graph-sendmail` go through Message intake; when there is no Envelope (as in `graph-sendmail`), the headers stand in for it.
+
+**Mailer**: what delivers a Message (`graphserver.Mailer`). `sendmail.GraphMailer` delivers via Microsoft Graph, sending as the mailbox the Message is from; tests use an in-memory fake.

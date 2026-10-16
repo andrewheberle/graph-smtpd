@@ -1,7 +1,6 @@
 package sendmail
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"log/slog"
@@ -115,12 +114,6 @@ func FromMIME(r io.Reader, env Envelope, opts ...Option) (*Message, error) {
 // From returns the address of the mailbox the Message is sent from.
 func (m *Message) From() string {
 	return m.from
-}
-
-func (m *Message) Send(ctx context.Context, user *graphusers.UserItemRequestBuilder) error {
-	m.requestBody.SetMessage(m.message)
-
-	return user.SendMail().Post(ctx, m.requestBody, nil)
 }
 
 // LogValue implements slog.LogValuer.

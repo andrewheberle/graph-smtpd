@@ -1,10 +1,10 @@
-package graphclient
+package sendmail
 
 import (
 	"testing"
 )
 
-func TestNewClient(t *testing.T) {
+func TestNewGraphMailer(t *testing.T) {
 	tests := []struct {
 		name     string
 		tenantid string
@@ -20,9 +20,9 @@ func TestNewClient(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := NewClient(tt.tenantid, tt.clientid, tt.secret)
+			_, err := NewGraphMailer(tt.tenantid, tt.clientid, tt.secret)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("NewClient() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("NewGraphMailer() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 		})

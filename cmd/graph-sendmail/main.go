@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/andrewheberle/graph-smtpd/pkg/graphclient"
 	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/env/v2"
@@ -114,10 +113,10 @@ func main() {
 		}
 	}
 
-	// create graph client
-	client, err := graphclient.NewClient(k.String("tenantid"), k.String("clientId"), k.String("secret"))
+	// create graph mailer
+	mailer, err := sendmail.NewGraphMailer(credentials(k))
 	if err != nil {
-		slog.Error("could not create graph client", "error", err)
+		slog.Error("could not create graph mailer", "error", err)
 		os.Exit(1)
 	}
 
@@ -131,14 +130,17 @@ func main() {
 	// add context to logger
 	logger = logger.With("message", message)
 
-	// create user object
-	user := client.Users().ByUserId(message.From())
-
 	// send email
-	if err := message.Send(context.Background(), user); err != nil {
+	if err := mailer.Send(context.Background(), message); err != nil {
 		logger.Error("error sending email", "error", err)
 		os.Exit(1)
 	}
 
 	logger.Info("message sent")
+}
+
+// credentials returns the Entra ID tenant ID, client ID and client secret
+// from the loaded configuration.
+func credentials(k *koanf.Koanf) (tenantID, clientID, secret string) {
+	return k.String("tenantid"), k.String("clientid"), k.String("secret")
 }
