@@ -38,6 +38,10 @@ func TestRelayPolicyAllowSource(t *testing.T) {
 		{"unlisted address", []string{"192.0.2.1"}, tcpAddr("192.0.2.9"), false},
 		{"listed ipv6 address", []string{"2001:db8::1"}, tcpAddr("2001:db8::1"), true},
 		{"unparseable address with list", []string{"192.0.2.1"}, badAddr{}, false},
+		{"address in cidr range", []string{"192.0.2.0/24"}, tcpAddr("192.0.2.77"), true},
+		{"address outside cidr range", []string{"192.0.2.0/24"}, tcpAddr("198.51.100.1"), false},
+		{"ipv6 address in cidr range", []string{"2001:db8::/32"}, tcpAddr("2001:db8:1::5"), true},
+		{"ipv4-mapped ipv6 address", []string{"192.0.2.1"}, tcpAddr("::ffff:192.0.2.1"), true},
 		{"unparseable address without list", nil, badAddr{}, true},
 	}
 	for _, tt := range tests {
@@ -69,5 +73,13 @@ func TestRelayPolicyAllowSender(t *testing.T) {
 				t.Errorf("allowSender(%q) = %v, want %v", tt.from, got, tt.want)
 			}
 		})
+	}
+}
+
+func TestNewRelayPolicyInvalidSource(t *testing.T) {
+	for _, source := range []string{"not-an-ip", "192.0.2.0/33", "192.0.2.300"} {
+		if _, err := newRelayPolicy(nil, []string{source}); err == nil {
+			t.Errorf("newRelayPolicy(%q) error = nil, want error", source)
+		}
 	}
 }

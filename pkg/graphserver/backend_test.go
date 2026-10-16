@@ -336,3 +336,9 @@ func TestBackendDeniedSourceCountsEachMessage(t *testing.T) {
 		t.Errorf("denied = %v, want 2", got)
 	}
 }
+
+func TestNewBackendInvalidSource(t *testing.T) {
+	if _, err := NewBackend(&fakeMailer{}, WithAllowedSources([]string{"192.0.2.300"})); err == nil {
+		t.Errorf("NewBackend() error = nil, want error")
+	}
+}
