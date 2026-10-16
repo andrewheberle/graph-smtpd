@@ -179,7 +179,7 @@ func main() {
 	if k.String("cert") != "" && k.String("key") != "" {
 		ctx, cancel := context.WithCancel(context.Background())
 
-		certinel, err := fswatcher.New(k.String("cert"), k.String("key"))
+		certinel, tlsConfig, err := newTLS(k.String("cert"), k.String("key"))
 		if err != nil {
 			logger.Error("could not set up certinel", "error", err, "cert", k.String("cert"), "key", k.String("key"))
 			os.Exit(1)
@@ -196,10 +196,8 @@ func main() {
 			cancel()
 		})
 
-		// set up certificate watching for server
-		s.TLSConfig = &tls.Config{
-			GetCertificate: certinel.GetCertificate,
-		}
+		// serve the watched certificate for STARTTLS
+		s.TLSConfig = tlsConfig
 	}
 
 	// add SMTP server
@@ -240,4 +238,17 @@ func newServer(be smtp.Backend, k configger.Config) *smtp.Server {
 	s.WriteTimeout = k.Duration("conntimeout")
 
 	return s
+}
+
+// newTLS creates a watcher for the certificate and key files, and a TLS
+// config that always serves the watcher's current certificate, so a renewed
+// certificate is used without a restart. The watcher must be started for
+// changes to be picked up.
+func newTLS(cert, key string) (*fswatcher.Sentinel, *tls.Config, error) {
+	sentinel, err := fswatcher.New(cert, key)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return sentinel, &tls.Config{GetCertificate: sentinel.GetCertificate}, nil
 }

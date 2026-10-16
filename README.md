@@ -157,13 +157,11 @@ The following are covered by unit tests, and most are also checked against Micro
 * Relay restrictions by source address or range and by sender
 * Temporary Graph failures answered with `451` so clients retry, and Graph rejections answered permanently
 * Loading the client secret from a file
-
-STARTTLS (`--cert` and `--key`) is supported but is not yet covered by automated or smoke tests.
+* STARTTLS with `--cert` and `--key`, including picking up a renewed certificate without a restart (unit tests only)
 
 ### TODO
 
 * SMTP authentication
 * Allow running as a service on Windows
 * Test with wider variety of devices
-* Automated tests for STARTTLS
 * Make logging better
