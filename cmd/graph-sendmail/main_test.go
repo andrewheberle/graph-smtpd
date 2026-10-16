@@ -3,8 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/knadh/koanf/providers/posflag"
-	"github.com/knadh/koanf/v2"
+	"github.com/andrewheberle/configger"
 	"github.com/spf13/pflag"
 )
 
@@ -17,9 +16,9 @@ func TestCredentials(t *testing.T) {
 		t.Fatalf("could not parse flags: %v", err)
 	}
 
-	k := koanf.New(".")
-	if err := k.Load(posflag.Provider(f, ".", k), nil); err != nil {
-		t.Fatalf("could not load flags: %v", err)
+	k, err := configger.LoadConfig(f, configger.WithoutConfigurationFile())
+	if err != nil {
+		t.Fatalf("could not load config: %v", err)
 	}
 
 	tenantID, clientID, secret := credentials(k)

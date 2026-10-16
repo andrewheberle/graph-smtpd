@@ -5,14 +5,9 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"strings"
 
+	"github.com/andrewheberle/configger"
 	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
-	"github.com/knadh/koanf/parsers/yaml"
-	"github.com/knadh/koanf/providers/env/v2"
-	"github.com/knadh/koanf/providers/file"
-	"github.com/knadh/koanf/providers/posflag"
-	"github.com/knadh/koanf/v2"
 	"github.com/spf13/pflag"
 )
 
@@ -52,8 +47,6 @@ func main() {
 		os.Exit(0)
 	}
 
-	k := koanf.New(".")
-
 	// set up logger
 	logLevel := new(slog.LevelVar)
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
@@ -68,39 +61,10 @@ func main() {
 		},
 	}))
 
-	// load any config file
-	if config, err := f.GetString("config"); err != nil {
-		logger.Error("error getting flag value", "error", err)
-		os.Exit(1)
-	} else if config != "" {
-		if err := k.Load(file.Provider(config), yaml.Parser()); err != nil {
-			logger.Error("error loading configuiration file", "error", err)
-			os.Exit(1)
-		}
-	}
-
-	// Load env vars
-	if err := k.Load(env.Provider(".", env.Opt{
-		Prefix: "SENDMAIL_",
-		TransformFunc: func(k, v string) (string, any) {
-			// Transform the key.
-			k = strings.ReplaceAll(strings.ToLower(strings.TrimPrefix(k, "SENDMAIL_")), "_", ".")
-
-			// Transform values with commas into slices
-			if strings.Contains(v, ",") {
-				return k, strings.Split(v, ",")
-			}
-
-			return k, v
-		},
-	}), nil); err != nil {
-		logger.Error("error reading env vars", "error", err)
-		os.Exit(1)
-	}
-
-	// Load command line options
-	if err := k.Load(posflag.Provider(f, ".", k), nil); err != nil {
-		logger.Error("error reading command line", "error", err)
+	// load config file, env vars and command line options
+	k, err := configger.LoadConfig(f, configger.WithEnvPrefix("SENDMAIL"))
+	if err != nil {
+		logger.Error("error loading configuration", "error", err)
 		os.Exit(1)
 	}
 
@@ -141,6 +105,6 @@ func main() {
 
 // credentials returns the Entra ID tenant ID, client ID and client secret
 // from the loaded configuration.
-func credentials(k *koanf.Koanf) (tenantID, clientID, secret string) {
+func credentials(k configger.Config) (tenantID, clientID, secret string) {
 	return k.String("tenantid"), k.String("clientid"), k.String("secret")
 }

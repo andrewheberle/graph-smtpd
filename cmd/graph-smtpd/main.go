@@ -7,19 +7,15 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
+	"github.com/andrewheberle/configger"
+	"github.com/andrewheberle/graph-smtpd/internal/cli"
 	"github.com/andrewheberle/graph-smtpd/pkg/graphserver"
 	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
 	"github.com/andrewheberle/redacted-string"
 	"github.com/cloudflare/certinel/fswatcher"
 	"github.com/emersion/go-smtp"
-	"github.com/knadh/koanf/parsers/yaml"
-	"github.com/knadh/koanf/providers/env/v2"
-	"github.com/knadh/koanf/providers/file"
-	"github.com/knadh/koanf/providers/posflag"
-	"github.com/knadh/koanf/v2"
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
@@ -77,47 +73,16 @@ func main() {
 		os.Exit(0)
 	}
 
-	k := koanf.New(".")
-
 	// set up logger
 	logLevel := new(slog.LevelVar)
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
 		Level: logLevel,
 	}))
 
-	// load any config file
-	if config, err := f.GetString("config"); err != nil {
-		logger.Error("error getting flag value", "error", err)
-		os.Exit(1)
-	} else if config != "" {
-		if err := k.Load(file.Provider(config), yaml.Parser()); err != nil {
-			logger.Error("error loading configuiration file", "error", err)
-			os.Exit(1)
-		}
-	}
-
-	// Load env vars
-	if err := k.Load(env.Provider(".", env.Opt{
-		Prefix: "SMTPD_",
-		TransformFunc: func(k, v string) (string, any) {
-			// Transform the key.
-			k = strings.ReplaceAll(strings.ToLower(strings.TrimPrefix(k, "SMTPD_")), "_", ".")
-
-			// Transform values with commas into slices
-			if strings.Contains(v, ",") {
-				return k, strings.Split(v, ",")
-			}
-
-			return k, v
-		},
-	}), nil); err != nil {
-		logger.Error("error reading env vars", "error", err)
-		os.Exit(1)
-	}
-
-	// Load command line options
-	if err := k.Load(posflag.Provider(f, ".", k), nil); err != nil {
-		logger.Error("error reading command line", "error", err)
+	// load config file, env vars and command line options
+	k, err := configger.LoadConfig(f, configger.WithEnvPrefix("SMTPD"))
+	if err != nil {
+		logger.Error("error loading configuration", "error", err)
 		os.Exit(1)
 	}
 
@@ -173,29 +138,21 @@ func main() {
 		})
 	}
 
-	// check secret was set, otherwise try the _FILE variation
-	if k.String("secret") == "" && k.String("secret_file") != "" {
-		// read from SMTPD_SECRET_FILE
-		b, err := os.ReadFile(k.String("secret_file"))
-		if err == nil {
-			// if that worked then set SMTPD_SECRET
-			if err := k.Set("secret", strings.TrimSpace(string(b))); err != nil {
-				logger.Warn("could not set secret value based on contents of secret_file", "secret_file", k.String("secret_file"), "error", err)
-			}
-		} else {
-			// not a fatal error at this point
-			logger.Warn("could not read", "secret_file", k.String("secret_file"), "error", err)
-		}
+	// get credentials, falling back to secret_file when no secret is set
+	tenantID, clientID, secret, err := cli.Credentials(k)
+	if err != nil {
+		// not a fatal error at this point
+		logger.Warn("could not load secret", "error", err)
 	}
 
 	// create graph mailer
-	mailer, err := sendmail.NewGraphMailer(k.String("tenantid"), k.String("clientid"), k.String("secret"))
+	mailer, err := sendmail.NewGraphMailer(tenantID, clientID, secret)
 	if err != nil {
 		logger.Error("error setting up graph mailer",
 			"error", err,
-			"clientid", k.String("clientid"),
-			"tenantid", k.String("tenantid"),
-			"secret", redacted.Redact(k.String("secret")),
+			"clientid", clientID,
+			"tenantid", tenantID,
+			"secret", redacted.Redact(secret),
 		)
 		os.Exit(1)
 	}
@@ -208,9 +165,9 @@ func main() {
 	}
 
 	logger.Info("graph backend created",
-		"clientid", k.String("clientid"),
-		"tenantid", k.String("tenantid"),
-		"secret", redacted.Redact(k.String("secret")),
+		"clientid", clientID,
+		"tenantid", tenantID,
+		"secret", redacted.Redact(secret),
 	)
 
 	// set up server
