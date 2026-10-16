@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -61,6 +62,17 @@ func deliveryError(err error) error {
 	return reply
 }
 
+// errAuthFailed is the reply to a failed login.
+var errAuthFailed = &smtp.SMTPError{
+	Code:         535,
+	EnhancedCode: smtp.EnhancedCode{5, 7, 8},
+	Message:      "authentication failed",
+}
+
+// defaultAuthDelay is how long a failed login waits before its reply, to
+// slow down password guessing.
+const defaultAuthDelay = time.Second
+
 // Mailer delivers a Message.
 type Mailer interface {
 	Send(ctx context.Context, m *sendmail.Message) error
@@ -74,6 +86,8 @@ type Backend struct {
 	allowedSenders  []string
 	allowedSources  []string
 	policy          *relayPolicy
+	users           *Users
+	authDelay       time.Duration
 
 	reg prometheus.Registerer
 
@@ -82,9 +96,10 @@ type Backend struct {
 	upgrades   map[*smtp.Conn]upgrade
 
 	// metrics
-	emailTotal prometheus.Counter
-	sendErrors prometheus.Counter
-	sendDenied prometheus.Counter
+	emailTotal   prometheus.Counter
+	sendErrors   prometheus.Counter
+	sendDenied   prometheus.Counter
+	authFailures prometheus.Counter
 }
 
 // NewBackend sets up a new SMTP backend that delivers each message using
@@ -94,7 +109,7 @@ func NewBackend(mailer Mailer, opts ...BackendOption) (*Backend, error) {
 		return nil, errors.New("mailer must not be nil")
 	}
 
-	b := &Backend{mailer: mailer, sendTimeout: DefaultSendTimeout}
+	b := &Backend{mailer: mailer, sendTimeout: DefaultSendTimeout, authDelay: defaultAuthDelay}
 
 	// apply options
 	for _, o := range opts {
@@ -124,6 +139,12 @@ func NewBackend(mailer Mailer, opts ...BackendOption) (*Backend, error) {
 		prometheus.CounterOpts{
 			Name: "graph_smtpd_email_denied_total",
 			Help: "Total number of emails denied",
+		},
+	)
+	b.authFailures = promauto.With(b.reg).NewCounter(
+		prometheus.CounterOpts{
+			Name: "graph_smtpd_auth_failures_total",
+			Help: "Total number of failed SMTP AUTH logins",
 		},
 	)
 
@@ -170,6 +191,16 @@ func (b *Backend) resumed(c *smtp.Conn) (string, bool) {
 	return u.connID, ok
 }
 
+// sourceAllowed reports whether a client from addr may relay without
+// logging in. With users configured, only the listed sources may.
+func (b *Backend) sourceAllowed(addr net.Addr) bool {
+	if b.users != nil && !b.policy.hasSources() {
+		return false
+	}
+
+	return b.policy.allowSource(addr)
+}
+
 // newConnID returns a short random ID that ties together the log lines of
 // one connection.
 func newConnID() string {
@@ -197,7 +228,10 @@ func (b *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
 		connID:          connID,
 		tls:             isTLS,
 		upgraded:        b.upgraded,
-		sourceDenied:    !b.policy.allowSource(c.Conn().RemoteAddr()),
+		sourceDenied:    !b.sourceAllowed(c.Conn().RemoteAddr()),
+		users:           b.users,
+		authDelay:       b.authDelay,
+		authFailures:    b.authFailures,
 		mailer:          b.mailer,
 		policy:          b.policy,
 		saveToSentItems: b.saveToSentItems,
@@ -237,6 +271,16 @@ func WithSaveToSentItems(save bool) BackendOption {
 func WithSendTimeout(d time.Duration) BackendOption {
 	return func(b *Backend) {
 		b.sendTimeout = d
+	}
+}
+
+// WithUsers lets clients log in with SMTP AUTH (PLAIN or LOGIN, over TLS
+// only) as any of users. A client that has logged in may relay from any
+// address; one that has not may only relay from an allowed source, and with
+// users set, an empty list of allowed sources allows none.
+func WithUsers(users *Users) BackendOption {
+	return func(b *Backend) {
+		b.users = users
 	}
 }
 
