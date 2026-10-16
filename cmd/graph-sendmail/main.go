@@ -114,7 +114,7 @@ func main() {
 	}
 
 	// create graph mailer
-	mailer, err := sendmail.NewGraphMailer(k.String("tenantid"), k.String("clientId"), k.String("secret"))
+	mailer, err := sendmail.NewGraphMailer(credentials(k))
 	if err != nil {
 		slog.Error("could not create graph mailer", "error", err)
 		os.Exit(1)
@@ -137,4 +137,10 @@ func main() {
 	}
 
 	logger.Info("message sent")
+}
+
+// credentials returns the Entra ID tenant ID, client ID and client secret
+// from the loaded configuration.
+func credentials(k *koanf.Koanf) (tenantID, clientID, secret string) {
+	return k.String("tenantid"), k.String("clientid"), k.String("secret")
 }
