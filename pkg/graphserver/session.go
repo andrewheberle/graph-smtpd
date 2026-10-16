@@ -76,7 +76,12 @@ func (s *Session) Data(r io.Reader) error {
 		// increment metric
 		s.sendErrors.Inc()
 
-		return err
+		// the message itself is unusable, so retrying will not help
+		return &smtp.SMTPError{
+			Code:         554,
+			EnhancedCode: smtp.EnhancedCode{5, 6, 0},
+			Message:      "message could not be processed: " + err.Error(),
+		}
 	}
 
 	s.msgLogger = s.log().With("message", message)
@@ -89,7 +94,8 @@ func (s *Session) Data(r io.Reader) error {
 		// increment metric
 		s.sendErrors.Inc()
 
-		return err
+		// delivery may succeed later, so ask the client to retry
+		return errDeliveryFailed
 	}
 
 	// increment metric

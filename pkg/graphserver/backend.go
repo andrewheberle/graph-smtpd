@@ -11,6 +11,15 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
+// errDeliveryFailed is returned when the Mailer fails. It is temporary (451
+// 4.4.1) so the client retries rather than dropping the message; the cause
+// is logged rather than returned to the client.
+var errDeliveryFailed = &smtp.SMTPError{
+	Code:         451,
+	EnhancedCode: smtp.EnhancedCode{4, 4, 1},
+	Message:      "temporary failure delivering message, try again later",
+}
+
 // Mailer delivers a Message.
 type Mailer interface {
 	Send(ctx context.Context, m *sendmail.Message) error

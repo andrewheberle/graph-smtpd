@@ -342,3 +342,25 @@ func TestNewBackendInvalidSource(t *testing.T) {
 		t.Errorf("NewBackend() error = nil, want error")
 	}
 }
+
+func TestBackendDataReplyCodes(t *testing.T) {
+	tests := []struct {
+		name     string
+		mailer   *fakeMailer
+		data     string
+		wantCode int
+	}{
+		{"mailer error is temporary", &fakeMailer{err: errors.New("graph unavailable")}, testMessage, 451},
+		{"unparseable message is permanent", &fakeMailer{}, "not a header line\r\n\r\nHello.\r\n", 554},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			addr, _ := startServer(t, tt.mailer)
+
+			err := send(dial(t, addr), "alice@example.com", []string{"bob@example.com"}, tt.data)
+			if got := replyCode(err); got != tt.wantCode {
+				t.Errorf("reply code = %d (%v), want %d", got, err, tt.wantCode)
+			}
+		})
+	}
+}
