@@ -9,6 +9,7 @@ import (
 	"slices"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
 	"github.com/emersion/go-smtp"
@@ -16,14 +17,20 @@ import (
 )
 
 // fakeMailer records each Message it is asked to send, failing with err when
-// it is set.
+// it is set. When block is set, Send waits until its context is done.
 type fakeMailer struct {
-	mu   sync.Mutex
-	sent []*sendmail.Message
-	err  error
+	mu    sync.Mutex
+	sent  []*sendmail.Message
+	err   error
+	block bool
 }
 
 func (f *fakeMailer) Send(ctx context.Context, m *sendmail.Message) error {
+	if f.block {
+		<-ctx.Done()
+		return ctx.Err()
+	}
+
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -362,5 +369,27 @@ func TestBackendDataReplyCodes(t *testing.T) {
 				t.Errorf("reply code = %d (%v), want %d", got, err, tt.wantCode)
 			}
 		})
+	}
+}
+
+func TestBackendSendTimeout(t *testing.T) {
+	addr, reg := startServer(t, &fakeMailer{block: true}, WithSendTimeout(50*time.Millisecond))
+
+	done := make(chan error, 1)
+	go func() {
+		done <- send(dial(t, addr), "alice@example.com", []string{"bob@example.com"}, testMessage)
+	}()
+
+	select {
+	case err := <-done:
+		if got := replyCode(err); got != 451 {
+			t.Errorf("reply code = %d (%v), want 451", got, err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("send did not time out")
+	}
+
+	if got := counter(t, reg, "graph_smtpd_email_errors_total"); got != 1 {
+		t.Errorf("errors = %v, want 1", got)
 	}
 }

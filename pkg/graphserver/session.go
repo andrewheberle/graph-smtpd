@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"time"
 
 	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
 	"github.com/emersion/go-smtp"
@@ -16,6 +17,7 @@ type Session struct {
 	rcpt            []string
 	mailer          Mailer
 	saveToSentItems bool
+	sendTimeout     time.Duration
 	logger          *slog.Logger
 	msgLogger       *slog.Logger
 	policy          *relayPolicy
@@ -86,8 +88,15 @@ func (s *Session) Data(r io.Reader) error {
 
 	s.msgLogger = s.log().With("message", message)
 
-	// send it
-	if err := s.mailer.Send(context.Background(), message); err != nil {
+	// send it, within the send timeout if one is set
+	ctx := context.Background()
+	if s.sendTimeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, s.sendTimeout)
+		defer cancel()
+	}
+
+	if err := s.mailer.Send(ctx, message); err != nil {
 		s.errors = append(s.errors, err)
 		s.log().Error("problem sending message", "error", err)
 

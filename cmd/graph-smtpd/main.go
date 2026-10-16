@@ -44,6 +44,7 @@ func main() {
 	f.Int("recipients", 10, "Maximum message recipients")
 	f.Int64("max", 1024*1024, "Maximum message size in bytes")
 	f.Bool("sentitems", false, "Save to sent items in senders mailbox")
+	f.Duration("timeout", graphserver.DefaultSendTimeout, "Time allowed to send each message via Graph (0 for no limit)")
 
 	// Access controls
 	f.StringSlice("senders", []string{}, "List of allowed senders (case-insensitive)")
@@ -80,7 +81,7 @@ func main() {
 	}))
 
 	// load config file, env vars and command line options
-	k, err := configger.LoadConfig(f, configger.WithEnvPrefix("SMTPD"))
+	k, err := loadConfig(f)
 	if err != nil {
 		logger.Error("error loading configuration", "error", err)
 		os.Exit(1)
@@ -95,6 +96,7 @@ func main() {
 		graphserver.WithAllowedSenders(k.Strings("senders")),
 		graphserver.WithAllowedSources(k.Strings("sources")),
 		graphserver.WithSaveToSentItems(k.Bool("sentitems")),
+		graphserver.WithSendTimeout(k.Duration("timeout")),
 		graphserver.WithLogger(logger),
 	}
 
@@ -222,4 +224,10 @@ func main() {
 		logger.Error("run group error", "error", err)
 		os.Exit(1)
 	}
+}
+
+// loadConfig loads configuration from the config file, SMTPD_ environment
+// variables and the parsed command line flags in f.
+func loadConfig(f *pflag.FlagSet) (configger.Config, error) {
+	return configger.LoadConfig(f, configger.WithEnvPrefix("SMTPD"))
 }
