@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/andrewheberle/graph-smtpd/internal/cli"
+	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
 	"github.com/spf13/pflag"
 )
 
@@ -121,10 +122,29 @@ func TestSendTimeout(t *testing.T) {
 	stderr, err := runMain(t, message, "--timeout", "1ns", "--tenantid", "tenant", "--clientid", "client", "--secret", "secret")
 
 	var exitErr *exec.ExitError
-	if !errors.As(err, &exitErr) || exitErr.ExitCode() != 1 {
-		t.Fatalf("exit = %v, want exit status 1", err)
+	// a send that times out may succeed later, so it is a temporary failure
+	if !errors.As(err, &exitErr) || exitErr.ExitCode() != 75 {
+		t.Fatalf("exit = %v, want exit status 75", err)
 	}
 	if !strings.Contains(stderr, "context deadline exceeded") {
 		t.Errorf("stderr = %q, want a send timeout", stderr)
+	}
+}
+
+func TestSendExitCode(t *testing.T) {
+	tests := []struct {
+		name string
+		err  error
+		want int
+	}{
+		{"rejected by Graph", &sendmail.RejectedError{StatusCode: 403}, 1},
+		{"temporary failure", errors.New("graph unavailable"), 75},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := sendExitCode(tt.err); got != tt.want {
+				t.Errorf("sendExitCode() = %d, want %d", got, tt.want)
+			}
+		})
 	}
 }

@@ -7,6 +7,7 @@ import (
 	netsmtp "net/smtp"
 	"net/textproto"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -391,5 +392,37 @@ func TestBackendSendTimeout(t *testing.T) {
 
 	if got := counter(t, reg, "graph_smtpd_email_errors_total"); got != 1 {
 		t.Errorf("errors = %v, want 1", got)
+	}
+}
+
+func TestBackendRejectedReplyCodes(t *testing.T) {
+	tests := []struct {
+		name     string
+		err      error
+		wantCode int
+		wantText string
+	}{
+		{"not allowed to send as mailbox", &sendmail.RejectedError{StatusCode: 403, Code: "ErrorAccessDenied"}, 550, "5.7.1"},
+		{"mailbox does not exist", &sendmail.RejectedError{StatusCode: 404, Code: "ErrorInvalidUser"}, 550, "5.1.1"},
+		{"message too large", &sendmail.RejectedError{StatusCode: 413, Code: "ErrorMessageSizeExceeded"}, 552, "5.3.4"},
+		{"other rejection", &sendmail.RejectedError{StatusCode: 400, Code: "ErrorInvalidRecipients"}, 554, "5.0.0"},
+		{"temporary failure", errors.New("graph unavailable"), 451, "4.4.1"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			addr, _ := startServer(t, &fakeMailer{err: tt.err})
+
+			err := send(dial(t, addr), "alice@example.com", []string{"bob@example.com"}, testMessage)
+			if got := replyCode(err); got != tt.wantCode {
+				t.Errorf("reply code = %d (%v), want %d", got, err, tt.wantCode)
+			}
+			if err != nil && !strings.Contains(err.Error(), tt.wantText) {
+				t.Errorf("reply = %q, want enhanced code %s", err, tt.wantText)
+			}
+			var rejected *sendmail.RejectedError
+			if errors.As(tt.err, &rejected) && (err == nil || !strings.Contains(err.Error(), rejected.Code)) {
+				t.Errorf("reply = %v, want Graph error code %s", err, rejected.Code)
+			}
+		})
 	}
 }

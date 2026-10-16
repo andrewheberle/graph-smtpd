@@ -95,6 +95,12 @@ All command line options may be specified as environment variables in the form o
 
 All options may also be provided in a YAML configuration file using the `--config` command-line option.
 
+### Exit Status
+
+* `0`: the message was sent
+* `75`: a temporary failure, such as a network error, timeout or Graph being unavailable; retrying later may succeed (`EX_TEMPFAIL`, as used by sendmail)
+* `1`: any other failure, including invalid configuration, a message that cannot be parsed, or Graph refusing the message (for example the app not being allowed to send as the sender)
+
 ## Smoke testing
 
 Before a release, run the interactive smoke test against a Microsoft 365 tenant you control:
