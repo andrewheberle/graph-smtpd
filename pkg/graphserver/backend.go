@@ -2,9 +2,13 @@ package graphserver
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/tls"
+	"encoding/hex"
 	"errors"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
@@ -73,6 +77,10 @@ type Backend struct {
 
 	reg prometheus.Registerer
 
+	// connections upgraded with STARTTLS, waiting for their next session
+	upgradesMu sync.Mutex
+	upgrades   map[*smtp.Conn]upgrade
+
 	// metrics
 	emailTotal prometheus.Counter
 	sendErrors prometheus.Counter
@@ -122,13 +130,73 @@ func NewBackend(mailer Mailer, opts ...BackendOption) (*Backend, error) {
 	return b, nil
 }
 
-// NewSession is called after client greeting (EHLO, HELO).
+// upgrade is a connection upgraded with STARTTLS whose new session has not
+// started yet.
+type upgrade struct {
+	connID string
+	at     time.Time
+}
+
+// upgradeExpiry is how long an upgraded connection's ID is kept waiting for
+// the client's next EHLO.
+const upgradeExpiry = time.Minute
+
+// upgraded records that c was upgraded with STARTTLS, so its next session
+// keeps the connection ID.
+func (b *Backend) upgraded(c *smtp.Conn, connID string) {
+	b.upgradesMu.Lock()
+	defer b.upgradesMu.Unlock()
+
+	if b.upgrades == nil {
+		b.upgrades = make(map[*smtp.Conn]upgrade)
+	}
+	b.upgrades[c] = upgrade{connID: connID, at: time.Now()}
+}
+
+// resumed returns the connection ID of c if it was just upgraded with
+// STARTTLS, dropping any upgrades whose client never sent EHLO again.
+func (b *Backend) resumed(c *smtp.Conn) (string, bool) {
+	b.upgradesMu.Lock()
+	defer b.upgradesMu.Unlock()
+
+	u, ok := b.upgrades[c]
+	delete(b.upgrades, c)
+	for conn, other := range b.upgrades {
+		if time.Since(other.at) > upgradeExpiry {
+			delete(b.upgrades, conn)
+		}
+	}
+
+	return u.connID, ok
+}
+
+// newConnID returns a short random ID that ties together the log lines of
+// one connection.
+func newConnID() string {
+	b := make([]byte, 5)
+	_, _ = rand.Read(b)
+
+	return hex.EncodeToString(b)
+}
+
+// NewSession is called after client greeting (EHLO, HELO), and again after
+// STARTTLS.
 //
 // A session is created even for a source that may not relay, so the client
 // gets a normal greeting and each message it tries is refused, and counted,
 // once at MAIL FROM.
 func (b *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
+	tlsState, isTLS := c.TLSConnectionState()
+	connID, resumed := b.resumed(c)
+	if !resumed {
+		connID = newConnID()
+	}
+
 	s := &Session{
+		conn:            c,
+		connID:          connID,
+		tls:             isTLS,
+		upgraded:        b.upgraded,
 		sourceDenied:    !b.policy.allowSource(c.Conn().RemoteAddr()),
 		mailer:          b.mailer,
 		policy:          b.policy,
@@ -136,7 +204,6 @@ func (b *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
 		sendTimeout:     b.sendTimeout,
 		helo:            c.Hostname(),
 		remote:          c.Conn().RemoteAddr().String(),
-		errors:          make([]error, 0),
 		emailTotal:      b.emailTotal,
 		sendErrors:      b.sendErrors,
 		sendDenied:      b.sendDenied,
@@ -146,6 +213,12 @@ func (b *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
 		s.logger = slog.New(slog.DiscardHandler)
 	} else {
 		s.logger = b.logger
+	}
+
+	if resumed {
+		s.logger.Info("starttls", append(s.connAttrs(), "tls_version", tls.VersionName(tlsState.Version))...)
+	} else {
+		s.logger.Info("connect", s.connAttrs()...)
 	}
 
 	return s, nil

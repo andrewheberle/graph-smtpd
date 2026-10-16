@@ -3,6 +3,7 @@ package graphserver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"time"
@@ -12,19 +13,47 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+// Message outcomes, logged as "status" on each message line.
+const (
+	statusSent      = "sent"      // accepted by Graph
+	statusRejected  = "rejected"  // refused permanently (5xx)
+	statusDeferred  = "deferred"  // refused temporarily (4xx), so the client should retry
+	statusAbandoned = "abandoned" // the client gave up before completing DATA
+)
+
+// replyQueued is the reply go-smtp sends when Data succeeds.
+const replyQueued = "250 2.0.0 OK: queued"
+
+// Session handles one SMTP session. Each message attempt is logged as a
+// single "message" line once its outcome is known, so the log shows what
+// happened to every message the relay was offered and why.
 type Session struct {
-	from            string
-	rcpt            []string
+	conn            *smtp.Conn
+	connID          string
+	tls             bool
 	mailer          Mailer
 	saveToSentItems bool
 	sendTimeout     time.Duration
 	logger          *slog.Logger
-	msgLogger       *slog.Logger
 	policy          *relayPolicy
 	sourceDenied    bool
 	helo            string
 	remote          string
-	errors          []error
+	upgraded        func(*smtp.Conn, string)
+
+	// counts of message outcomes, for the disconnect line
+	outcomes map[string]int
+	seq      int
+
+	// the current message
+	from      string
+	rcpt      []string
+	id        string
+	started   time.Time
+	size      int64
+	message   *sendmail.Message
+	inMessage bool
+	finished  bool
 
 	emailTotal prometheus.Counter
 	sendErrors prometheus.Counter
@@ -32,31 +61,27 @@ type Session struct {
 }
 
 func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
+	s.seq++
+	s.inMessage = true
+	s.finished = false
+	s.id = fmt.Sprintf("%s.%d", s.connID, s.seq)
 	s.from = from
-	s.msgLogger = s.log().With("from", from)
+	s.started = time.Now()
 
 	// check that the client's address may relay
 	if s.sourceDenied {
-		err := errSourceDenied
-		s.errors = append(s.errors, err)
-		s.log().Error("problem checking allowed sources", "error", err, "remote", s.remote)
-
-		// increment metric
 		s.sendDenied.Inc()
+		s.finish(statusRejected, errSourceDenied, errors.New("client address is not in the allowed sources"))
 
-		return err
+		return errSourceDenied
 	}
 
 	// check that sender is allowed
 	if !s.policy.allowSender(from) {
-		err := errSenderDenied
-		s.errors = append(s.errors, err)
-		s.log().Error("problem checking allowed senders", "error", err)
-
-		// increment metric
 		s.sendDenied.Inc()
+		s.finish(statusRejected, errSenderDenied, errors.New("sender is not in the allowed senders"))
 
-		return err
+		return errSenderDenied
 	}
 
 	return nil
@@ -69,24 +94,29 @@ func (s *Session) Rcpt(to string, opts *smtp.RcptOptions) error {
 }
 
 func (s *Session) Data(r io.Reader) error {
-	// build message from incoming data
+	// build message from incoming data, counting the whole message including
+	// anything the parser does not read
+	counted := &countingReader{r: r}
 	env := sendmail.Envelope{From: s.from, Rcpt: s.rcpt}
-	message, err := sendmail.FromMIME(r, env, sendmail.WithSaveToSentItems(s.saveToSentItems))
+	message, err := sendmail.FromMIME(counted, env, sendmail.WithSaveToSentItems(s.saveToSentItems))
+	_, _ = io.Copy(io.Discard, counted)
+	s.size = counted.n
+
 	if err != nil {
-		s.errors = append(s.errors, err)
-		s.log().Error("problem in parsing mail data", "error", err)
 		// increment metric
 		s.sendErrors.Inc()
 
 		// the message itself is unusable, so retrying will not help
-		return &smtp.SMTPError{
+		reply := &smtp.SMTPError{
 			Code:         554,
 			EnhancedCode: smtp.EnhancedCode{5, 6, 0},
 			Message:      "message could not be processed: " + err.Error(),
 		}
-	}
+		s.finish(statusRejected, reply, err)
 
-	s.msgLogger = s.log().With("message", message)
+		return reply
+	}
+	s.message = message
 
 	// send it, within the send timeout if one is set
 	ctx := context.Background()
@@ -97,20 +127,25 @@ func (s *Session) Data(r io.Reader) error {
 	}
 
 	if err := s.mailer.Send(ctx, message); err != nil {
-		s.errors = append(s.errors, err)
-		s.log().Error("problem sending message", "error", err)
-
 		// increment metric
 		s.sendErrors.Inc()
 
 		// ask the client to retry unless Graph rejected the message outright
-		return deliveryError(err)
+		reply := deliveryError(err)
+		status := statusRejected
+		var smtpErr *smtp.SMTPError
+		if errors.As(reply, &smtpErr) && smtpErr.Code < 500 {
+			status = statusDeferred
+		}
+		s.finish(status, reply, err)
+
+		return reply
 	}
 
 	// increment metric
 	s.emailTotal.Inc()
 
-	s.log().Debug("message sent", "rcpt", s.rcpt)
+	s.finish(statusSent, nil, nil)
 
 	return nil
 }
@@ -118,28 +153,127 @@ func (s *Session) Data(r io.Reader) error {
 // Reset discards the current message, so the next message in the session
 // starts with a clean envelope.
 func (s *Session) Reset() {
-	if err := errors.Join(s.errors...); err != nil {
-		s.log().Error("session ended", "errors", s.errors, "rcpt", s.rcpt)
-	} else {
-		s.log().Info("session ended", "rcpt", s.rcpt)
-	}
+	s.abandon()
 
 	s.from = ""
 	s.rcpt = nil
-	s.errors = nil
-	s.msgLogger = nil
+	s.id = ""
+	s.size = 0
+	s.message = nil
+	s.inMessage = false
+	s.finished = false
 }
 
-// log returns the logger for the current message, falling back to the
-// session logger before a message has started.
-func (s *Session) log() *slog.Logger {
-	if s.msgLogger != nil {
-		return s.msgLogger
+// Logout is called when the connection closes, and when the client upgrades
+// the connection with STARTTLS, in which case go-smtp starts a new session
+// on the upgraded connection.
+func (s *Session) Logout() error {
+	s.abandon()
+
+	if s.conn != nil {
+		if _, nowTLS := s.conn.TLSConnectionState(); nowTLS && !s.tls {
+			// the connection carries on in a new session, under the same ID,
+			// which logs the upgrade
+			if s.upgraded != nil {
+				s.upgraded(s.conn, s.connID)
+			}
+
+			return nil
+		}
 	}
 
-	return s.logger
+	attrs := append(s.connAttrs(), "messages", s.seq)
+	for _, status := range []string{statusSent, statusRejected, statusDeferred, statusAbandoned} {
+		if n := s.outcomes[status]; n > 0 {
+			attrs = append(attrs, status, n)
+		}
+	}
+	s.logger.Info("disconnect", attrs...)
+
+	return nil
 }
 
-func (s *Session) Logout() error {
-	return nil
+// abandon logs the current message if the client gave up on it before its
+// outcome was known.
+func (s *Session) abandon() {
+	if s.inMessage && !s.finished {
+		s.finish(statusAbandoned, nil, nil)
+	}
+}
+
+// finish logs the outcome of the current message: the reply the client was
+// sent and, for a failure, the underlying reason.
+func (s *Session) finish(status string, reply error, reason error) {
+	s.finished = true
+	if s.outcomes == nil {
+		s.outcomes = make(map[string]int)
+	}
+	s.outcomes[status]++
+
+	rcpt := s.rcpt
+	if rcpt == nil {
+		rcpt = []string{}
+	}
+	attrs := append(s.connAttrs(),
+		"id", s.id,
+		"from", s.from,
+		"rcpt", rcpt,
+	)
+	if s.size > 0 {
+		attrs = append(attrs, "size", s.size)
+	}
+	if s.message != nil && s.message.MessageID() != "" {
+		attrs = append(attrs, "message_id", s.message.MessageID())
+	}
+	attrs = append(attrs, "status", status)
+	switch {
+	case status == statusSent:
+		attrs = append(attrs, "reply", replyQueued)
+	case reply != nil:
+		attrs = append(attrs, "reply", replyText(reply))
+	}
+	if reason != nil {
+		attrs = append(attrs, "reason", reason.Error())
+	}
+	attrs = append(attrs, "duration", time.Since(s.started).Round(time.Millisecond).String())
+
+	level := slog.LevelInfo
+	if status == statusRejected || status == statusDeferred {
+		level = slog.LevelWarn
+	}
+	s.logger.Log(context.Background(), level, "message", attrs...)
+
+	// header details can be personal, so they are only logged for debugging
+	if s.message != nil {
+		s.logger.Debug("message details", "conn", s.connID, "id", s.id, "message", s.message)
+	}
+}
+
+// connAttrs returns the attributes that identify the connection.
+func (s *Session) connAttrs() []any {
+	return []any{"conn", s.connID, "client", s.remote, "helo", s.helo, "tls", s.tls}
+}
+
+// replyText formats an SMTP error as the reply line the client received.
+func replyText(err error) string {
+	var smtpErr *smtp.SMTPError
+	if !errors.As(err, &smtpErr) {
+		return err.Error()
+	}
+
+	return fmt.Sprintf("%d %d.%d.%d %s", smtpErr.Code,
+		smtpErr.EnhancedCode[0], smtpErr.EnhancedCode[1], smtpErr.EnhancedCode[2], smtpErr.Message)
+}
+
+// countingReader counts the bytes read through it.
+type countingReader struct {
+	r io.Reader
+	n int64
+}
+
+func (c *countingReader) Read(p []byte) (int, error) {
+	n, err := c.r.Read(p)
+	c.n += int64(n)
+
+	return n, err
 }

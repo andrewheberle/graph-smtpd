@@ -22,6 +22,7 @@ type Envelope struct {
 
 type Message struct {
 	from        string
+	messageID   string
 	message     graphmodels.Messageable
 	requestBody *graphusers.ItemSendMailPostRequestBody
 }
@@ -95,9 +96,16 @@ func FromMIME(r io.Reader, env Envelope, opts ...Option) (*Message, error) {
 
 	return &Message{
 		from:        from,
+		messageID:   strings.TrimSpace(header.Get("Message-Id")),
 		message:     message,
 		requestBody: requestBody,
 	}, nil
+}
+
+// MessageID returns the Message-ID header of the original message, or ""
+// if it had none.
+func (m *Message) MessageID() string {
+	return m.messageID
 }
 
 // From returns the address of the mailbox the Message is sent from.
