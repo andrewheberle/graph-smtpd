@@ -138,11 +138,11 @@ func main() {
 		})
 	}
 
-	// get credentials, falling back to secret_file when no secret is set
+	// get credentials, falling back to a secret file when no secret is set
 	tenantID, clientID, secret, err := cli.Credentials(k)
 	if err != nil {
-		// not a fatal error at this point
-		logger.Warn("could not load secret", "error", err)
+		logger.Error("could not load secret", "error", err)
+		os.Exit(1)
 	}
 
 	// create graph mailer
