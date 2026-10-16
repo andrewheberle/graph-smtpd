@@ -45,6 +45,7 @@ docker run -p 25:2525 \
 * `--addr`: Listen address (default = "localhost:2525") (string)
 * `--cert`: Certificate for enabling STARTTLS (string)
 * `--clientid`: Client/Application ID (string)
+* `--conntimeout`: Time allowed for each read or write on a client connection, after which an idle or stalled client is disconnected (default = 5m, 0 for no limit) (duration)
 * `--key`: Private key for enabling STARTTLS (string)
 * `--sentitems`: Save to senders sent items (bool)
 * `--secret`: Client Secret (string)

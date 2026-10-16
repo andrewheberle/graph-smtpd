@@ -43,6 +43,7 @@ func main() {
 	f.String("domain", "localhost", "Service domain/hostname")
 	f.Int("recipients", 10, "Maximum message recipients")
 	f.Int64("max", 1024*1024, "Maximum message size in bytes")
+	f.Duration("conntimeout", 5*time.Minute, "Time allowed for each read or write on a client connection (0 for no limit)")
 	f.Bool("sentitems", false, "Save to sent items in senders mailbox")
 	f.Duration("timeout", graphserver.DefaultSendTimeout, "Time allowed to send each message via Graph (0 for no limit)")
 
@@ -173,11 +174,7 @@ func main() {
 	)
 
 	// set up server
-	s := smtp.NewServer(be)
-	s.Addr = k.String("addr")
-	s.Domain = k.String("domain")
-	s.MaxRecipients = k.Int("recipients")
-	s.MaxMessageBytes = k.Int64("max")
+	s := newServer(be, k)
 
 	if k.String("cert") != "" && k.String("key") != "" {
 		ctx, cancel := context.WithCancel(context.Background())
@@ -230,4 +227,17 @@ func main() {
 // variables and the parsed command line flags in f.
 func loadConfig(f *pflag.FlagSet) (configger.Config, error) {
 	return configger.LoadConfig(f, configger.WithEnvPrefix("SMTPD"))
+}
+
+// newServer creates the SMTP server for be from the configuration in k.
+func newServer(be smtp.Backend, k configger.Config) *smtp.Server {
+	s := smtp.NewServer(be)
+	s.Addr = k.String("addr")
+	s.Domain = k.String("domain")
+	s.MaxRecipients = k.Int("recipients")
+	s.MaxMessageBytes = k.Int64("max")
+	s.ReadTimeout = k.Duration("conntimeout")
+	s.WriteTimeout = k.Duration("conntimeout")
+
+	return s
 }
