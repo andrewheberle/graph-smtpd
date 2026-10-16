@@ -93,3 +93,32 @@ func TestCredentialsUnreadableSecretFile(t *testing.T) {
 		t.Errorf("Credentials() error = nil, want error")
 	}
 }
+
+func TestCredentialsSecretFileFromEnv(t *testing.T) {
+	secretFile := writeFile(t, "secret", "file-secret\n")
+
+	tests := []struct {
+		name string
+		env  map[string]string
+		want string
+	}{
+		{"secret file only", map[string]string{"TEST_SECRET_FILE": secretFile}, "file-secret"},
+		{"secret wins over secret file", map[string]string{"TEST_SECRET_FILE": secretFile, "TEST_SECRET": "env-secret"}, "env-secret"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			for k, v := range tt.env {
+				t.Setenv(k, v)
+			}
+			cfg := loadConfig(t, "TEST")
+
+			_, _, secret, err := Credentials(cfg)
+			if err != nil {
+				t.Fatalf("Credentials() error = %v", err)
+			}
+			if secret != tt.want {
+				t.Errorf("secret = %q, want %q", secret, tt.want)
+			}
+		})
+	}
+}
