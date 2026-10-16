@@ -5,6 +5,8 @@
   "include-component-in-tag": false,
   "pull-request-title-pattern": "chore(release): v${version}",
   "packages": {
-    ".": {}
+    ".": {
+      "extra-files": ["README.md"]
+    }
   }
 }

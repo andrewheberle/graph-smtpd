@@ -37,23 +37,31 @@ docker run -p 25:2525 \
     -e SMTPD_CLIENTID="clientid" \
     -e SMTPD_SECRET="secret" \
     -e SMTPD_TENANTID="tenantid" \
-    ghcr.io/andrewheberle/graph-smtpd:v0.7.0
+    ghcr.io/andrewheberle/graph-smtpd:v0.10.0 # x-release-please-version
 ```
+
+The container listens for SMTP on port 2525 and serves metrics on port 8080.
 
 ### Command-Line Options
 
 * `--addr`: Listen address (default = "localhost:2525") (string)
-* `--cert`: Certificate for enabling STARTTLS (string)
+* `--cert`: Certificate for enabling STARTTLS, reloaded when it changes on disk (string)
 * `--clientid`: Client/Application ID (string)
+* `--config`: Configuration file (string)
 * `--conntimeout`: Time allowed for each read or write on a client connection, after which an idle or stalled client is disconnected (default = 5m, 0 for no limit) (duration)
+* `--debug`: Enable debug logging (bool)
+* `--domain`: Hostname announced in the SMTP greeting (default = "localhost") (string)
 * `--key`: Private key for enabling STARTTLS (string)
-* `--sentitems`: Save to senders sent items (bool)
+* `--max`: Maximum message size in bytes (default = 1048576) (int)
+* `--metrics`: Listen address for metrics, served at `/metrics` (string)
+* `--recipients`: Maximum recipients per message (default = 10) (int)
 * `--secret`: Client Secret (string)
 * `--senders`: Allowed senders, matched case-insensitively ([]string)
+* `--sentitems`: Save to senders sent items (bool)
 * `--sources`: Allowed source IP addresses or CIDR ranges, such as `10.0.0.0/8` ([]string)
 * `--tenantid`: Tenant ID (string)
 * `--timeout`: Time allowed to send each message via Graph, after which the client is asked to retry (default = 30s, 0 for no limit) (duration)
-* `--metrics`: Listen address for metrics (string)
+* `--version`: Display version and exit (bool)
 
 All command line options may be specified as environment variables in the form of `SMTPD_<option>`. List options such as `SMTPD_SENDERS` take a comma-separated value.
 
@@ -64,6 +72,25 @@ The client secret may instead be loaded from a file by setting `SMTPD_SECRET_FIL
 All configuration options may be provided in a YAML configuration file using the `--config` command-line option.
 
 Options are applied in this order, with later sources overriding earlier ones: command-line defaults, the configuration file, environment variables, then command-line options.
+
+### SMTP Replies
+
+Clients see these replies when a message is not accepted:
+
+* `550 5.7.1`: the client's address is not in `--sources`, or the sender is not in `--senders`
+* `451 4.4.1`: sending via Graph failed or timed out; the client should retry later
+* `550 5.7.1`, `550 5.1.1`, `552 5.3.4` or `554 5.0.0`: Graph refused the message (the app may not send as the sender, the mailbox does not exist, the message is too large, or another rejection), with Graph's error code in the reply
+* `554 5.6.0`: the message could not be processed, for example it is not a valid MIME message
+
+Recipients are taken from the SMTP envelope (`RCPT TO`): addresses in the `To` or `Cc` headers that are not envelope recipients are not sent to, and envelope recipients that are not in those headers are sent as Bcc.
+
+### Metrics
+
+When `--metrics` is set, the following counters are available alongside the standard Go and process metrics:
+
+* `graph_smtpd_email_total`: messages sent
+* `graph_smtpd_email_denied_total`: messages refused by `--sources` or `--senders`
+* `graph_smtpd_email_errors_total`: messages that could not be processed or sent
 
 ## CLI "sendmail" mode
 
@@ -84,12 +111,16 @@ cat email.txt | ./graph-sendmail
 ### Command-Line Options
 
 * `--clientid`: Client/Application ID (string)
-* `--sentitems`: Save to senders sent items (bool)
+* `--config`: Configuration file (string)
+* `--debug`: Enable debug logging (bool)
+* `--quiet`: Silence any output (bool)
 * `--secret`: Client Secret (string)
+* `--sentitems`: Save to senders sent items (bool)
 * `--tenantid`: Tenant ID (string)
 * `--timeout`: Time allowed to send the message via Graph (default = 30s, 0 for no limit) (duration)
-* `--quiet`: Silence any output (bool)
-* `--debug`: Enable debug logging (bool)
+* `--version`: Display version and exit (bool)
+
+The message is read from standard input and sent as the address in its `From` header.
 
 All command line options may be specified as environment variables in the form of `SENDMAIL_<option>`, and the client secret may be loaded from a file using `SENDMAIL_SECRET_FILE`, in the same way as for graph-smtpd.
 
@@ -115,14 +146,24 @@ It builds both binaries from the working tree, sends a set of test messages thro
 
 ### What works
 
-Based on limited testing, sending of plain text and HTML emails with or without an attachment works correctly.
+The following are covered by unit tests, and most are also checked against Microsoft 365 by the smoke test:
 
-Sending to one or more recipients via Cc/Bcc also works. 
+* Plain text and HTML messages; when a message has both, the HTML version is sent
+* Inline images referenced from HTML with `cid:` URLs
+* Attachments in any transfer encoding, and messages whose whole body is a file such as a PDF
+* Text in character sets other than UTF-8, such as Windows-1252, converted for Graph
+* Delivery to envelope recipients, including envelope-only recipients as Bcc
+* Several messages on one SMTP connection
+* Relay restrictions by source address or range and by sender
+* Temporary Graph failures answered with `451` so clients retry, and Graph rejections answered permanently
+* Loading the client secret from a file
+
+STARTTLS (`--cert` and `--key`) is supported but is not yet covered by automated or smoke tests.
 
 ### TODO
 
-* Make logging better
 * SMTP authentication
 * Allow running as a service on Windows
 * Test with wider variety of devices
-* Implement unit tests
+* Automated tests for STARTTLS
+* Make logging better
