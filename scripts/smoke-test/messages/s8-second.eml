@@ -1,0 +1,7 @@
+From: __FROM__
+To: __TO__
+Subject: [__TAG__] S8 second message (to B only)
+Content-Type: text/plain; charset=utf-8
+
+S8: the second of two messages sent on one SMTP connection. Only B should
+receive this one.

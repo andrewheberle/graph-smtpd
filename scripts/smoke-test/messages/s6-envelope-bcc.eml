@@ -1,0 +1,8 @@
+From: __FROM__
+To: __TO__
+Subject: [__TAG__] S6 envelope-only Bcc
+Content-Type: text/plain; charset=utf-8
+
+S6: recipient A is in the To header. Recipient B was only given in the SMTP
+envelope (RCPT TO), so B should receive this as a Bcc, and B's address should
+not appear in the To or Cc fields on either copy.

@@ -1,0 +1,21 @@
+From: __FROM__
+To: __TO__
+Subject: [__TAG__] S3 inline image
+MIME-Version: 1.0
+Content-Type: multipart/related; boundary="s3-boundary"
+
+--s3-boundary
+Content-Type: text/html; charset=utf-8
+
+<p>S3: a red and blue checkerboard should appear below, inside the message body.</p>
+<p><img src="cid:checkerboard@smoke-test" width="96" height="96" alt="checkerboard"></p>
+--s3-boundary
+Content-Type: image/png
+Content-ID: <checkerboard@smoke-test>
+Content-Disposition: inline
+Content-Transfer-Encoding: base64
+
+iVBORw0KGgoAAAANSUhEUgAAADAAAAAwCAIAAADYYG7QAAAATklEQVR42u3XsQ0AIAgEQEZhNEdm
+JEdAEqPNJV8/1wFRmW1yVZtbPQEEBAQEBDQEvRx20gMEBAQEBDQF2fZAQEBAQP4y5wcQEBAQ0FfQ
+Bh7vsJfBLnBgAAAAAElFTkSuQmCC
+--s3-boundary--

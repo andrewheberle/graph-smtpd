@@ -1,0 +1,31 @@
+From: __FROM__
+To: __TO__
+Subject: [__TAG__] S4 attachments
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="s4-boundary"
+
+--s4-boundary
+Content-Type: text/plain; charset=utf-8
+
+S4: there should be three attachments, each containing one line of text:
+  base64.txt     -> "attachment encoded as base64"
+  qp.txt         -> "café attachment encoded as quoted-printable"
+  unencoded.txt  -> "attachment with no transfer encoding"
+--s4-boundary
+Content-Type: text/plain; charset=utf-8; name="base64.txt"
+Content-Disposition: attachment; filename="base64.txt"
+Content-Transfer-Encoding: base64
+
+YXR0YWNobWVudCBlbmNvZGVkIGFzIGJhc2U2NAo=
+--s4-boundary
+Content-Type: text/plain; charset=utf-8; name="qp.txt"
+Content-Disposition: attachment; filename="qp.txt"
+Content-Transfer-Encoding: quoted-printable
+
+caf=C3=A9 attachment encoded as quoted-printable
+--s4-boundary
+Content-Type: text/plain; charset=utf-8; name="unencoded.txt"
+Content-Disposition: attachment; filename="unencoded.txt"
+
+attachment with no transfer encoding
+--s4-boundary--

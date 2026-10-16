@@ -1,0 +1,15 @@
+From: __FROM__
+To: __TO__
+Subject: [__TAG__] S2 text and HTML
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="s2-boundary"
+
+--s2-boundary
+Content-Type: text/plain; charset=utf-8
+
+S2 PLAIN TEXT PART: if you see this, the HTML part was not used.
+--s2-boundary
+Content-Type: text/html; charset=utf-8
+
+<p><b>S2 HTML PART:</b> this sentence should be <span style="color:#c00">red</span> and the start bold.</p>
+--s2-boundary--

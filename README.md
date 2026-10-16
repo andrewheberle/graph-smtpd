@@ -95,6 +95,16 @@ All command line options may be specified as environment variables in the form o
 
 All options may also be provided in a YAML configuration file using the `--config` command-line option.
 
+## Smoke testing
+
+Before a release, run the interactive smoke test against a Microsoft 365 tenant you control:
+
+```sh
+./scripts/smoke-test/smoke-test.sh
+```
+
+It builds both binaries from the working tree, sends a set of test messages through your tenant (text and HTML, inline images, attachments, character sets, envelope-only Bcc, relay denials and more), asks you to confirm what arrived in two mailboxes, and checks the rest automatically. It needs `go`, `curl` and `bash`, plus the tenant ID, client ID and a file containing the client secret; nothing you enter is saved.
+
 ## Status
 
 ### What works

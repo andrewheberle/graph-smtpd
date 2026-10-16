@@ -1,0 +1,7 @@
+From: __FROM__
+To: __TO__, __TO_B__
+Subject: [__TAG__] S7 header-only recipient
+Content-Type: text/plain; charset=utf-8
+
+S7: both A and B are in the To header, but only A was given in the SMTP
+envelope (RCPT TO). A should receive this. B should NOT.

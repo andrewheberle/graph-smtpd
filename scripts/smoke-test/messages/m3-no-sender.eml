@@ -1,0 +1,5 @@
+To: __TO__
+Subject: [__TAG__] M3 should never be sent
+Content-Type: text/plain; charset=utf-8
+
+M3: this message has no From header, so graph-sendmail must reject it.
