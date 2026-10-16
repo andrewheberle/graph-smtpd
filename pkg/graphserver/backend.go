@@ -3,7 +3,6 @@ package graphserver
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 
 	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
@@ -81,7 +80,7 @@ func (b *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
 	// Check if IP is allowed
 	if !b.policy.allowSource(c.Conn().RemoteAddr()) {
 		b.sendDenied.Inc()
-		return nil, fmt.Errorf("source not allowed")
+		return nil, errSourceDenied
 	}
 
 	// set up new session

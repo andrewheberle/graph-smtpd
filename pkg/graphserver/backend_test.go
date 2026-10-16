@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	netsmtp "net/smtp"
+	"net/textproto"
 	"slices"
 	"sync"
 	"testing"
@@ -291,5 +292,35 @@ func TestNewBackendLeavesAllowListsUnchanged(t *testing.T) {
 	}
 	if !slices.Equal(sources, wantSources) {
 		t.Errorf("sources = %v, want unchanged %v", sources, wantSources)
+	}
+}
+
+// replyCode returns the SMTP reply code carried by err, or 0 if it has none.
+func replyCode(err error) int {
+	var tpErr *textproto.Error
+	if errors.As(err, &tpErr) {
+		return tpErr.Code
+	}
+
+	return 0
+}
+
+func TestBackendDenialsArePermanent(t *testing.T) {
+	tests := []struct {
+		name string
+		opt  BackendOption
+	}{
+		{"sender not allowed", WithAllowedSenders([]string{"zoe@example.com"})},
+		{"source not allowed", WithAllowedSources([]string{"192.0.2.1"})},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			addr, _ := startServer(t, &fakeMailer{}, tt.opt)
+
+			err := send(dial(t, addr), "alice@example.com", []string{"bob@example.com"}, testMessage)
+			if got := replyCode(err); got != 550 {
+				t.Errorf("reply code = %d (%v), want 550", got, err)
+			}
+		})
 	}
 }

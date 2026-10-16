@@ -34,7 +34,7 @@ func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 
 	// check that sender is allowed
 	if !s.policy.allowSender(from) {
-		err := errors.New("sender not allowed")
+		err := errSenderDenied
 		s.errors = append(s.errors, err)
 		s.log().Error("problem checking allowed senders", "error", err)
 

@@ -3,6 +3,23 @@ package graphserver
 import (
 	"net"
 	"strings"
+
+	"github.com/emersion/go-smtp"
+)
+
+// Relay denials are permanent (550 5.7.1, delivery not authorised), so
+// clients do not retry them.
+var (
+	errSourceDenied = &smtp.SMTPError{
+		Code:         550,
+		EnhancedCode: smtp.EnhancedCode{5, 7, 1},
+		Message:      "relay from this address is not permitted",
+	}
+	errSenderDenied = &smtp.SMTPError{
+		Code:         550,
+		EnhancedCode: smtp.EnhancedCode{5, 7, 1},
+		Message:      "sender is not permitted",
+	}
 )
 
 // relayPolicy decides which sources may connect and which senders may send.
