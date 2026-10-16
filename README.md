@@ -45,12 +45,14 @@ docker run -p 25:2525 \
 * `--addr`: Listen address (default = "localhost:2525") (string)
 * `--cert`: Certificate for enabling STARTTLS (string)
 * `--clientid`: Client/Application ID (string)
+* `--conntimeout`: Time allowed for each read or write on a client connection, after which an idle or stalled client is disconnected (default = 5m, 0 for no limit) (duration)
 * `--key`: Private key for enabling STARTTLS (string)
 * `--sentitems`: Save to senders sent items (bool)
 * `--secret`: Client Secret (string)
 * `--senders`: Allowed senders, matched case-insensitively ([]string)
 * `--sources`: Allowed source IP addresses or CIDR ranges, such as `10.0.0.0/8` ([]string)
 * `--tenantid`: Tenant ID (string)
+* `--timeout`: Time allowed to send each message via Graph, after which the client is asked to retry (default = 30s, 0 for no limit) (duration)
 * `--metrics`: Listen address for metrics (string)
 
 All command line options may be specified as environment variables in the form of `SMTPD_<option>`. List options such as `SMTPD_SENDERS` take a comma-separated value.
@@ -85,6 +87,7 @@ cat email.txt | ./graph-sendmail
 * `--sentitems`: Save to senders sent items (bool)
 * `--secret`: Client Secret (string)
 * `--tenantid`: Tenant ID (string)
+* `--timeout`: Time allowed to send the message via Graph (default = 30s, 0 for no limit) (duration)
 * `--quiet`: Silence any output (bool)
 * `--debug`: Enable debug logging (bool)
 

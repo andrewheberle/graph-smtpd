@@ -4,12 +4,26 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"time"
 
 	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
 	"github.com/emersion/go-smtp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
+
+// DefaultSendTimeout is how long a Mailer has to deliver a message, unless
+// changed with WithSendTimeout.
+const DefaultSendTimeout = 30 * time.Second
+
+// errDeliveryFailed is returned when the Mailer fails. It is temporary (451
+// 4.4.1) so the client retries rather than dropping the message; the cause
+// is logged rather than returned to the client.
+var errDeliveryFailed = &smtp.SMTPError{
+	Code:         451,
+	EnhancedCode: smtp.EnhancedCode{4, 4, 1},
+	Message:      "temporary failure delivering message, try again later",
+}
 
 // Mailer delivers a Message.
 type Mailer interface {
@@ -19,6 +33,7 @@ type Mailer interface {
 type Backend struct {
 	mailer          Mailer
 	saveToSentItems bool
+	sendTimeout     time.Duration
 	logger          *slog.Logger
 	allowedSenders  []string
 	allowedSources  []string
@@ -39,7 +54,7 @@ func NewBackend(mailer Mailer, opts ...BackendOption) (*Backend, error) {
 		return nil, errors.New("mailer must not be nil")
 	}
 
-	b := &Backend{mailer: mailer}
+	b := &Backend{mailer: mailer, sendTimeout: DefaultSendTimeout}
 
 	// apply options
 	for _, o := range opts {
@@ -86,6 +101,7 @@ func (b *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
 		mailer:          b.mailer,
 		policy:          b.policy,
 		saveToSentItems: b.saveToSentItems,
+		sendTimeout:     b.sendTimeout,
 		helo:            c.Hostname(),
 		remote:          c.Conn().RemoteAddr().String(),
 		errors:          make([]error, 0),
@@ -108,6 +124,14 @@ type BackendOption func(*Backend)
 func WithSaveToSentItems(save bool) BackendOption {
 	return func(b *Backend) {
 		b.saveToSentItems = save
+	}
+}
+
+// WithSendTimeout sets how long the Mailer has to deliver each message
+// before the client is told to retry. Zero or less means no timeout.
+func WithSendTimeout(d time.Duration) BackendOption {
+	return func(b *Backend) {
+		b.sendTimeout = d
 	}
 }
 

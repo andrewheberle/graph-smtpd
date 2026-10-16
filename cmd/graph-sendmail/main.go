@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"time"
 
 	"github.com/andrewheberle/configger"
 	"github.com/andrewheberle/graph-smtpd/internal/cli"
@@ -35,6 +36,7 @@ func main() {
 
 	// sending options
 	f.Bool("sentitems", false, "Save to sent items in senders mailbox")
+	f.Duration("timeout", 30*time.Second, "Time allowed to send the message via Graph (0 for no limit)")
 
 	// parse command line
 	if err := f.Parse(os.Args[1:]); err != nil {
@@ -88,22 +90,29 @@ func main() {
 	// create graph mailer
 	mailer, err := sendmail.NewGraphMailer(tenantID, clientID, secret)
 	if err != nil {
-		slog.Error("could not create graph mailer", "error", err)
+		logger.Error("could not create graph mailer", "error", err)
 		os.Exit(1)
 	}
 
 	// build message from stdin, using headers in place of an envelope
 	message, err := sendmail.FromMIME(os.Stdin, sendmail.Envelope{}, sendmail.WithSaveToSentItems(k.Bool("sentitems")))
 	if err != nil {
-		slog.Error("unable to read message", "error", err)
+		logger.Error("unable to read message", "error", err)
 		os.Exit(1)
 	}
 
 	// add context to logger
 	logger = logger.With("message", message)
 
-	// send email
-	if err := mailer.Send(context.Background(), message); err != nil {
+	// send email, within the timeout if one is set
+	ctx := context.Background()
+	if timeout := k.Duration("timeout"); timeout > 0 {
+		var cancel context.CancelFunc
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
+
+	if err := mailer.Send(ctx, message); err != nil {
 		logger.Error("error sending email", "error", err)
 		os.Exit(1)
 	}
