@@ -53,11 +53,15 @@ docker run -p 25:2525 \
 * `--tenantid`: Tenant ID (string)
 * `--metrics`: Listen address for metrics (string)
 
-All command line options may be specified as environment variables in the form of `SMTPD_<option>`, with the additional option to supply `SMTPD_SECRET_FILE` to allow loading of the client secret from a file.
+All command line options may be specified as environment variables in the form of `SMTPD_<option>`. List options such as `SMTPD_SENDERS` take a comma-separated value.
+
+The client secret may instead be loaded from a file by setting `SMTPD_SECRET_FILE` (or `secret_file` in the configuration file). The file is only used when no secret is set, and graph-smtpd will not start if the file cannot be read.
 
 ### Configuration File
 
-All configuration options may be provided in a YAML or JSON configuration file using the `--config` command-line option or if this is not set, will be looked for in the current working directory as `config.yaml`.
+All configuration options may be provided in a YAML configuration file using the `--config` command-line option.
+
+Options are applied in this order, with later sources overriding earlier ones: command-line defaults, the configuration file, environment variables, then command-line options.
 
 ## CLI "sendmail" mode
 
@@ -84,7 +88,9 @@ cat email.txt | ./graph-sendmail
 * `--quiet`: Silence any output (bool)
 * `--debug`: Enable debug logging (bool)
 
-All command line options may be specified as environment variables in the form of `SENDMAIL_<option>`.
+All command line options may be specified as environment variables in the form of `SENDMAIL_<option>`, and the client secret may be loaded from a file using `SENDMAIL_SECRET_FILE`, in the same way as for graph-smtpd.
+
+All options may also be provided in a YAML configuration file using the `--config` command-line option.
 
 ## Status
 
