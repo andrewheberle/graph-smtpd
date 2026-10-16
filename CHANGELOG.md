@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.11.0](https://github.com/andrewheberle/graph-smtpd/compare/v0.10.0...v0.11.0) (2026-10-16)
+
+
+### Features
+
+* **graphserver:** log every message with its source and outcome ([#128](https://github.com/andrewheberle/graph-smtpd/issues/128)) ([f18742d](https://github.com/andrewheberle/graph-smtpd/commit/f18742d9b2bf57e214ef2ba05e464b33b1c7b6ef))
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/microsoft/kiota-abstractions-go to v1.11.1 ([#122](https://github.com/andrewheberle/graph-smtpd/issues/122)) ([131b173](https://github.com/andrewheberle/graph-smtpd/commit/131b173d764588909bffeef5c0f3e88a1c058796))
+* **graph-sendmail:** honour --quiet when configuration fails to load ([#127](https://github.com/andrewheberle/graph-smtpd/issues/127)) ([3b57236](https://github.com/andrewheberle/graph-smtpd/commit/3b572367f570e8af334ac8ffc6d4f6dfa69eedaa))
+
 ## [0.10.0](https://github.com/andrewheberle/graph-smtpd/compare/v0.9.1...v0.10.0) (2026-10-16)
 
 
