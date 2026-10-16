@@ -152,8 +152,7 @@ func newAttachments(attachments []parsemail.Attachment) ([]graphmodels.Attachmen
 	for _, a := range attachments {
 		data, err := io.ReadAll(a.Data)
 		if err != nil {
-			// we cannot recover from this
-			panic(err)
+			return nil, fmt.Errorf("could not read attachment %q: %w", a.Filename, err)
 		}
 		attachment := graphmodels.NewFileAttachment()
 		attachment.SetName(&a.Filename)

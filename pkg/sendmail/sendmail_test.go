@@ -1,10 +1,14 @@
 package sendmail
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
 	"testing"
+	"testing/iotest"
+
+	"github.com/OfimaticSRL/parsemail"
 
 	graphmodels "github.com/microsoftgraph/msgraph-sdk-go/models"
 )
@@ -180,5 +184,15 @@ func TestFromMIMENoSender(t *testing.T) {
 
 	if _, err := FromMIME(f, Envelope{}); err == nil {
 		t.Errorf("FromMIME() error = nil, want error")
+	}
+}
+
+func TestNewAttachmentsReadError(t *testing.T) {
+	attachments := []parsemail.Attachment{
+		{Filename: "bad.txt", ContentType: "text/plain", Data: iotest.ErrReader(errors.New("read failed"))},
+	}
+
+	if _, err := newAttachments(attachments); err == nil {
+		t.Errorf("newAttachments() error = nil, want error")
 	}
 }
