@@ -1,0 +1,7 @@
+From: Smoke Test Sender <__FROM__>
+To: __TO__
+Subject: [__TAG__] M1 graph-sendmail with display name
+Content-Type: text/plain; charset=utf-8
+
+M1: sent by graph-sendmail, from a From header with a display name, reading
+the secret from SENDMAIL_SECRET_FILE.
