@@ -9,6 +9,7 @@ require (
 	github.com/cloudflare/certinel v0.4.1
 	github.com/emersion/go-message v0.18.2
 	github.com/emersion/go-smtp v0.25.0
+	github.com/microsoft/kiota-abstractions-go v1.9.4
 	github.com/microsoftgraph/msgraph-sdk-go v1.104.0
 	github.com/oklog/run v1.2.0
 	github.com/prometheus/client_golang v1.25.0
@@ -36,7 +37,6 @@ require (
 	github.com/knadh/koanf/providers/posflag v1.0.1 // indirect
 	github.com/knadh/koanf/v2 v2.3.5 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
-	github.com/microsoft/kiota-abstractions-go v1.9.4 // indirect
 	github.com/microsoft/kiota-authentication-azure-go v1.3.1 // indirect
 	github.com/microsoft/kiota-http-go v1.5.6 // indirect
 	github.com/microsoft/kiota-serialization-form-go v1.1.3 // indirect
