@@ -325,3 +325,38 @@ func TestFromMIMEMessageID(t *testing.T) {
 		})
 	}
 }
+
+func TestFromMIMEInternetMessageID(t *testing.T) {
+	tests := []struct {
+		name      string
+		messageID string
+		want      string
+	}{
+		{"valid", "<abc123@example.com>", "<abc123@example.com>"},
+		{"missing", "", ""},
+		{"no angle brackets", "abc123@example.com", ""},
+		{"no at sign", "<abc123>", ""},
+		{"space", "<abc 123@example.com>", ""},
+		{"two at signs", "<a@b@example.com>", ""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mime := "From: alice@example.com\nTo: bob@example.com\n"
+			if tt.messageID != "" {
+				mime += "Message-ID: " + tt.messageID + "\n"
+			}
+			m, err := FromMIME(strings.NewReader(mime+"\nHello.\n"), Envelope{})
+			if err != nil {
+				t.Fatalf("FromMIME() error = %v", err)
+			}
+
+			got := ""
+			if id := m.message.GetInternetMessageId(); id != nil {
+				got = *id
+			}
+			if got != tt.want {
+				t.Errorf("internetMessageId = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}

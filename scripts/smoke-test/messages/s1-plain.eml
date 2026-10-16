@@ -1,6 +1,7 @@
 From: __FROM__
 To: __TO__
 Subject: [__TAG__] S1 plain text
+Message-ID: <__TAG__.s1@smoke-test.local>
 Content-Type: text/plain; charset=utf-8
 
 S1: this is a plain text message.

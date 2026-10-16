@@ -54,6 +54,13 @@ func FromMIME(r io.Reader, env Envelope, opts ...Option) (*Message, error) {
 	message := graphmodels.NewMessage()
 
 	message.SetSubject(&msg.subject)
+
+	// keep the original Message-ID, so the message can be found in Exchange
+	// message trace; otherwise Graph assigns its own
+	messageID := strings.TrimSpace(header.Get("Message-Id"))
+	if validMessageID(messageID) {
+		message.SetInternetMessageId(&messageID)
+	}
 	message.SetFrom(newRecipient(from))
 
 	to := parseAddressList(header.Get("To"))
@@ -96,7 +103,7 @@ func FromMIME(r io.Reader, env Envelope, opts ...Option) (*Message, error) {
 
 	return &Message{
 		from:        from,
-		messageID:   strings.TrimSpace(header.Get("Message-Id")),
+		messageID:   messageID,
 		message:     message,
 		requestBody: requestBody,
 	}, nil
@@ -150,6 +157,27 @@ func newRecipient(address string) graphmodels.Recipientable {
 	recipient.SetEmailAddress(emailAddress)
 
 	return recipient
+}
+
+// validMessageID reports whether id is a Message-ID in the "<left@right>"
+// form Graph accepts, without spaces or control characters.
+func validMessageID(id string) bool {
+	if len(id) < 5 || len(id) > 250 || id[0] != '<' || id[len(id)-1] != '>' {
+		return false
+	}
+
+	inner := id[1 : len(id)-1]
+	at := strings.IndexByte(inner, '@')
+	if at <= 0 || at == len(inner)-1 || strings.Count(inner, "@") != 1 {
+		return false
+	}
+	for _, r := range inner {
+		if r <= ' ' || r > '~' || r == '<' || r == '>' {
+			return false
+		}
+	}
+
+	return true
 }
 
 // newAttachments converts attachments to Graph file attachments; inline
