@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.10.0](https://github.com/andrewheberle/graph-smtpd/compare/v0.9.1...v0.10.0) (2026-10-16)
+
+
+### Features
+
+* **graph-sendmail:** exit 75 when a send fails temporarily ([2bf4857](https://github.com/andrewheberle/graph-smtpd/commit/2bf485727e98146656dc6dc6d0ece5c58b5fa1fa))
+* **sendmail:** mark permanent Graph failures as RejectedError ([#120](https://github.com/andrewheberle/graph-smtpd/issues/120)) ([2bf4857](https://github.com/andrewheberle/graph-smtpd/commit/2bf485727e98146656dc6dc6d0ece5c58b5fa1fa))
+
+
+### Bug Fixes
+
+* **graphserver:** reject mail permanently when Graph refuses it ([2bf4857](https://github.com/andrewheberle/graph-smtpd/commit/2bf485727e98146656dc6dc6d0ece5c58b5fa1fa))
+
 ## [0.9.1](https://github.com/andrewheberle/graph-smtpd/compare/v0.9.0...v0.9.1) (2026-10-16)
 
 
