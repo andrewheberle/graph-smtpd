@@ -73,6 +73,11 @@ func parseSource(s string) (netip.Prefix, error) {
 	return netip.PrefixFrom(addr, addr.BitLen()), nil
 }
 
+// hasSources reports whether a list of allowed sources is set.
+func (p *relayPolicy) hasSources() bool {
+	return len(p.sources) > 0
+}
+
 // allowSource reports whether a client connecting from addr may relay.
 func (p *relayPolicy) allowSource(addr net.Addr) bool {
 	if len(p.sources) == 0 {

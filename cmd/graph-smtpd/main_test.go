@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/andrewheberle/graph-smtpd/pkg/graphserver"
 	"github.com/emersion/go-smtp"
 	"github.com/spf13/pflag"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func TestLoadConfigTimeout(t *testing.T) {
@@ -126,5 +128,63 @@ func TestNewServerLogsSMTPErrors(t *testing.T) {
 
 	if !strings.Contains(buf.String(), `"msg":"smtp server error"`) || !strings.Contains(buf.String(), "handshake failed") {
 		t.Errorf("SMTP server error not logged: %q", buf.String())
+	}
+}
+
+func TestLoadUsers(t *testing.T) {
+	dir := t.TempDir()
+	usersFile := filepath.Join(dir, "users")
+	hashed, err := bcrypt.GenerateFromPassword([]byte("scanner-password"), bcrypt.MinCost)
+	if err != nil {
+		t.Fatalf("could not hash password: %v", err)
+	}
+	if err := os.WriteFile(usersFile, []byte("scanner:"+string(hashed)+"\n"), 0o600); err != nil {
+		t.Fatalf("could not write users file: %v", err)
+	}
+
+	tests := []struct {
+		name      string
+		args      []string
+		wantUsers int
+		wantErr   string
+	}{
+		{"no users file", nil, 0, ""},
+		{"users file with TLS", []string{"--users", usersFile, "--cert", "tls.crt", "--key", "tls.key"}, 1, ""},
+		{"users file without TLS", []string{"--users", usersFile}, 0, "needs --cert and --key"},
+		{"missing users file", []string{"--users", filepath.Join(dir, "missing"), "--cert", "tls.crt", "--key", "tls.key"}, 0, "could not open"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := pflag.NewFlagSet("config", pflag.ContinueOnError)
+			f.String("config", "", "")
+			f.String("users", "", "")
+			f.String("cert", "", "")
+			f.String("key", "", "")
+			if err := f.Parse(tt.args); err != nil {
+				t.Fatalf("could not parse flags: %v", err)
+			}
+			cfg, err := loadConfig(f)
+			if err != nil {
+				t.Fatalf("loadConfig() error = %v", err)
+			}
+
+			users, err := loadUsers(cfg)
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("loadUsers() error = %v, want %q", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("loadUsers() error = %v", err)
+			}
+			got := 0
+			if users != nil {
+				got = users.Len()
+			}
+			if got != tt.wantUsers {
+				t.Errorf("users = %d, want %d", got, tt.wantUsers)
+			}
+		})
 	}
 }

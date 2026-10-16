@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
+	"github.com/emersion/go-sasl"
 	"github.com/emersion/go-smtp"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -41,6 +42,13 @@ type Session struct {
 	remote          string
 	upgraded        func(*smtp.Conn, string)
 
+	// SMTP AUTH: the accounts clients may log in as, and the user this
+	// session logged in as
+	users        *Users
+	user         string
+	authDelay    time.Duration
+	authFailures prometheus.Counter
+
 	// counts of message outcomes, for the disconnect line
 	outcomes map[string]int
 	seq      int
@@ -68,10 +76,15 @@ func (s *Session) Mail(from string, opts *smtp.MailOptions) error {
 	s.from = from
 	s.started = time.Now()
 
-	// check that the client's address may relay
-	if s.sourceDenied {
+	// check that the client may relay: it has logged in, or its address is
+	// allowed
+	if s.sourceDenied && s.user == "" {
+		reason := errors.New("client address is not in the allowed sources")
+		if s.users != nil {
+			reason = errors.New("client is not authenticated and its address is not in the allowed sources")
+		}
 		s.sendDenied.Inc()
-		s.finish(statusRejected, errSourceDenied, errors.New("client address is not in the allowed sources"))
+		s.finish(statusRejected, errSourceDenied, reason)
 
 		return errSourceDenied
 	}
@@ -148,6 +161,61 @@ func (s *Session) Data(r io.Reader) error {
 	s.finish(statusSent, nil, nil)
 
 	return nil
+}
+
+// AuthMechanisms returns the SASL mechanisms clients may use to log in:
+// none unless users are configured. go-smtp only offers and accepts them on
+// a TLS connection.
+func (s *Session) AuthMechanisms() []string {
+	if s.users == nil {
+		return nil
+	}
+
+	return []string{sasl.Plain, sasl.Login}
+}
+
+// Auth starts a login with mechanism mech.
+func (s *Session) Auth(mech string) (sasl.Server, error) {
+	switch mech {
+	case sasl.Plain:
+		return sasl.NewPlainServer(func(identity, username, password string) error {
+			// a client may not log in as one user to act as another
+			if identity != "" && identity != username {
+				return s.loginFailed(mech, username)
+			}
+			return s.login(mech, username, password)
+		}), nil
+	case sasl.Login:
+		return newLoginServer(func(username, password string) error {
+			return s.login(mech, username, password)
+		}), nil
+	default:
+		return nil, smtp.ErrAuthUnknownMechanism
+	}
+}
+
+// login checks a username and password.
+func (s *Session) login(mech, username, password string) error {
+	if !s.users.authenticate(username, password) {
+		return s.loginFailed(mech, username)
+	}
+
+	s.user = username
+	s.logger.Info("auth", append(s.connAttrs(), "mechanism", mech)...)
+
+	return nil
+}
+
+// loginFailed logs and counts a failed login, and waits before replying to
+// slow down password guessing.
+func (s *Session) loginFailed(mech, username string) error {
+	if s.authFailures != nil {
+		s.authFailures.Inc()
+	}
+	s.logger.Warn("auth failed", append(s.connAttrs(), "mechanism", mech, "username", username)...)
+	time.Sleep(s.authDelay)
+
+	return errAuthFailed
 }
 
 // Reset discards the current message, so the next message in the session
@@ -249,9 +317,15 @@ func (s *Session) finish(status string, reply error, reason error) {
 	}
 }
 
-// connAttrs returns the attributes that identify the connection.
+// connAttrs returns the attributes that identify the connection, and the
+// user once the client has logged in.
 func (s *Session) connAttrs() []any {
-	return []any{"conn", s.connID, "client", s.remote, "helo", s.helo, "tls", s.tls}
+	attrs := []any{"conn", s.connID, "client", s.remote, "helo", s.helo, "tls", s.tls}
+	if s.user != "" {
+		attrs = append(attrs, "user", s.user)
+	}
+
+	return attrs
 }
 
 // replyText formats an SMTP error as the reply line the client received.

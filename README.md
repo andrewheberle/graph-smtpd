@@ -63,6 +63,7 @@ The container listens for SMTP on port 2525 and serves metrics on port 8080.
 * `--sources`: Allowed source IP addresses or CIDR ranges, such as `10.0.0.0/8` ([]string)
 * `--tenantid`: Tenant ID (string)
 * `--timeout`: Time allowed to send each message via Graph, after which the client is asked to retry (default = 30s, 0 for no limit) (duration)
+* `--users`: File of SMTP AUTH users, see [SMTP Authentication](#smtp-authentication) (string)
 * `--version`: Display version and exit (bool)
 
 All command line options may be specified as environment variables in the form of `SMTPD_<option>`. List options such as `SMTPD_SENDERS` take a comma-separated value.
@@ -75,11 +76,30 @@ All configuration options may be provided in a YAML configuration file using the
 
 Options are applied in this order, with later sources overriding earlier ones: command-line defaults, the configuration file, environment variables, then command-line options.
 
+### SMTP Authentication
+
+Clients can log in with SMTP AUTH, using the `PLAIN` or `LOGIN` mechanisms, when `--users` names a file of users. AUTH is only offered after the client has started TLS with STARTTLS, so `--users` requires `--cert` and `--key`.
+
+The users file uses the htpasswd format, one `username:hash` per line, with bcrypt hashes only. Blank lines and lines starting with `#` are ignored. Create entries with `htpasswd`:
+
+```sh
+htpasswd -nB scanner >> users
+```
+
+With `--users` set:
+
+* a client that has logged in may relay from any address
+* a client that has not logged in may only relay from an address in `--sources`; if `--sources` is empty, every client must log in
+* `--senders` applies to every client, logged in or not
+
+A failed login is answered with `535 5.7.8` after a one second delay, logged with the username and client address, and counted in `graph_smtpd_auth_failures_total`. The users file is read at startup, so restart graph-smtpd after changing it.
+
 ### SMTP Replies
 
 Clients see these replies when a message is not accepted:
 
-* `550 5.7.1`: the client's address is not in `--sources`, or the sender is not in `--senders`
+* `550 5.7.1`: the client has not logged in and its address is not in `--sources`, or the sender is not in `--senders`
+* `535 5.7.8`: the username or password is wrong
 * `451 4.4.1`: sending via Graph failed or timed out; the client should retry later
 * `550 5.7.1`, `550 5.1.1`, `552 5.3.4` or `554 5.0.0`: Graph refused the message (the app may not send as the sender, the mailbox does not exist, the message is too large, or another rejection), with Graph's error code in the reply
 * `554 5.6.0`: the message could not be processed, for example it is not a valid MIME message
@@ -96,7 +116,8 @@ graph-smtpd logs JSON to standard error. Every message the relay is offered gets
 
 * `status` is `sent`, `rejected` (refused permanently), `deferred` (refused temporarily, so the client should retry) or `abandoned` (the client gave up before sending the message)
 * `reply` is the SMTP reply the client received, and `reason` the underlying error for anything not sent
-* `conn` ties together the lines for one connection, including `connect`, `starttls` and `disconnect` lines; `id` numbers the messages on it
+* `conn` ties together the lines for one connection, including `connect`, `starttls`, `auth` and `disconnect` lines; `id` numbers the messages on it
+* `user` is the SMTP AUTH user, once the client has logged in; failed logins are logged as `auth failed` at `WARN`
 * `message_id` is the message's `Message-ID` header, which is passed to Microsoft 365 so the message can be found in Exchange message trace
 
 Sent and abandoned messages are logged at `INFO`, and rejected and deferred messages at `WARN`. Subjects and header recipients are only logged with `--debug`.
@@ -107,6 +128,7 @@ When `--metrics` is set, the following counters are available alongside the stan
 * `graph_smtpd_email_total`: messages sent
 * `graph_smtpd_email_denied_total`: messages refused by `--sources` or `--senders`
 * `graph_smtpd_email_errors_total`: messages that could not be processed or sent
+* `graph_smtpd_auth_failures_total`: failed SMTP AUTH logins
 
 ## CLI "sendmail" mode
 
@@ -174,8 +196,8 @@ The following are covered by unit tests, and most are also checked against Micro
 * Temporary Graph failures answered with `451` so clients retry, and Graph rejections answered permanently
 * Loading the client secret from a file
 * STARTTLS with `--cert` and `--key`, including picking up a renewed certificate without a restart (unit tests only)
+* SMTP AUTH with `PLAIN` and `LOGIN` over TLS (unit tests only)
 
 ### TODO
 
-* SMTP authentication
 * Allow running as a service on Windows
