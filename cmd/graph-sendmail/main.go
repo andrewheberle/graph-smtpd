@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/andrewheberle/configger"
@@ -72,7 +73,9 @@ func main() {
 	// load config file, env vars and command line options
 	k, err := loadConfig(f)
 	if err != nil {
-		logger.Error("error loading configuration", "error", err)
+		if !quietWithoutConfig(f) {
+			logger.Error("error loading configuration", "error", err)
+		}
 		os.Exit(1)
 	}
 
@@ -139,4 +142,17 @@ func sendExitCode(err error) int {
 	}
 
 	return exTempFail
+}
+
+// quietWithoutConfig reports whether quiet mode was requested when the
+// configuration could not be loaded, from the --quiet flag or the
+// SENDMAIL_QUIET environment variable, the sources that do not depend on the
+// configuration file.
+func quietWithoutConfig(f *pflag.FlagSet) bool {
+	if quiet, err := f.GetBool("quiet"); err == nil && quiet {
+		return true
+	}
+	quiet, err := strconv.ParseBool(os.Getenv("SENDMAIL_QUIET"))
+
+	return err == nil && quiet
 }
