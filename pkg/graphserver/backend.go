@@ -3,10 +3,7 @@ package graphserver
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
-	"net"
-	"slices"
 
 	"github.com/andrewheberle/graph-smtpd/pkg/sendmail"
 	"github.com/emersion/go-smtp"
@@ -25,6 +22,7 @@ type Backend struct {
 	logger          *slog.Logger
 	allowedSenders  []string
 	allowedSources  []string
+	policy          *relayPolicy
 
 	reg prometheus.Registerer
 
@@ -48,14 +46,11 @@ func NewBackend(mailer Mailer, opts ...BackendOption) (*Backend, error) {
 		o(b)
 	}
 
-	// set defaults
-	if b.allowedSenders == nil {
-		b.allowedSenders = make([]string, 0)
+	policy, err := newRelayPolicy(b.allowedSenders, b.allowedSources)
+	if err != nil {
+		return nil, err
 	}
-
-	if b.allowedSources == nil {
-		b.allowedSources = make([]string, 0)
-	}
+	b.policy = policy
 
 	// set up metrics
 	b.emailTotal = promauto.With(b.reg).NewCounter(
@@ -81,21 +76,15 @@ func NewBackend(mailer Mailer, opts ...BackendOption) (*Backend, error) {
 }
 
 // NewSession is called after client greeting (EHLO, HELO).
+//
+// A session is created even for a source that may not relay, so the client
+// gets a normal greeting and each message it tries is refused, and counted,
+// once at MAIL FROM.
 func (b *Backend) NewSession(c *smtp.Conn) (smtp.Session, error) {
-	// Check if IP is allowed
-	if len(b.allowedSources) > 0 {
-		if addr, _, err := net.SplitHostPort(c.Conn().RemoteAddr().String()); err == nil {
-			if _, found := slices.BinarySearch(b.allowedSources, addr); !found {
-				b.sendDenied.Inc()
-				return nil, fmt.Errorf("source not allowed")
-			}
-		}
-	}
-
-	// set up new session
 	s := &Session{
+		sourceDenied:    !b.policy.allowSource(c.Conn().RemoteAddr()),
 		mailer:          b.mailer,
-		allowedSenders:  b.allowedSenders,
+		policy:          b.policy,
 		saveToSentItems: b.saveToSentItems,
 		helo:            c.Hostname(),
 		remote:          c.Conn().RemoteAddr().String(),
@@ -122,27 +111,19 @@ func WithSaveToSentItems(save bool) BackendOption {
 	}
 }
 
+// WithAllowedSenders limits which sender addresses may send. An empty list
+// allows any sender.
 func WithAllowedSenders(senders []string) BackendOption {
 	return func(b *Backend) {
-		if senders == nil {
-			b.allowedSenders = make([]string, 0)
-		} else {
-			// make sure it's sorted
-			slices.Sort(senders)
-			b.allowedSenders = senders
-		}
+		b.allowedSenders = senders
 	}
 }
 
+// WithAllowedSources limits which client IP addresses may relay. An empty
+// list allows any source.
 func WithAllowedSources(sources []string) BackendOption {
 	return func(b *Backend) {
-		if sources == nil {
-			b.allowedSources = make([]string, 0)
-		} else {
-			// make sure it's sorted
-			slices.Sort(sources)
-			b.allowedSources = sources
-		}
+		b.allowedSources = sources
 	}
 }
 

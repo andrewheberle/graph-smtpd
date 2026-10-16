@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net"
 	netsmtp "net/smtp"
+	"net/textproto"
 	"slices"
 	"sync"
 	"testing"
@@ -203,29 +204,23 @@ func TestBackendSources(t *testing.T) {
 		name       string
 		sources    []string
 		wantSent   int
-		wantDenied bool
+		wantDenied float64
 	}{
-		{"source allowed", []string{"127.0.0.1"}, 1, false},
-		{"source not allowed", []string{"192.0.2.1"}, 0, true},
+		{"source allowed", []string{"127.0.0.1"}, 1, 0},
+		{"source not allowed", []string{"192.0.2.1"}, 0, 1},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mailer := &fakeMailer{}
 			addr, reg := startServer(t, mailer, WithAllowedSources(tt.sources))
 
-			// a denied source may be rejected at connect or at MAIL
-			if c, err := netsmtp.Dial(addr); err == nil {
-				_ = send(c, "alice@example.com", []string{"bob@example.com"}, testMessage)
-				_ = c.Close()
-			}
+			_ = send(dial(t, addr), "alice@example.com", []string{"bob@example.com"}, testMessage)
 
 			if n := len(mailer.messages()); n != tt.wantSent {
 				t.Errorf("sent = %d messages, want %d", n, tt.wantSent)
 			}
-			// clients that fall back from EHLO to HELO are denied twice, so
-			// only check whether any denial was counted
-			if got := counter(t, reg, "graph_smtpd_email_denied_total"); (got > 0) != tt.wantDenied {
-				t.Errorf("denied = %v, want denied %v", got, tt.wantDenied)
+			if got := counter(t, reg, "graph_smtpd_email_denied_total"); got != tt.wantDenied {
+				t.Errorf("denied = %v, want %v", got, tt.wantDenied)
 			}
 		})
 	}
@@ -273,5 +268,77 @@ func TestBackendEmailTotalExcludesFailedSends(t *testing.T) {
 
 	if got := counter(t, reg, "graph_smtpd_email_total"); got != 0 {
 		t.Errorf("email total = %v, want 0", got)
+	}
+}
+
+func TestNewBackendLeavesAllowListsUnchanged(t *testing.T) {
+	senders := []string{"zoe@example.com", "alice@example.com"}
+	sources := []string{"192.0.2.9", "192.0.2.1"}
+	wantSenders := slices.Clone(senders)
+	wantSources := slices.Clone(sources)
+
+	if _, err := NewBackend(&fakeMailer{}, WithAllowedSenders(senders), WithAllowedSources(sources)); err != nil {
+		t.Fatalf("NewBackend() error = %v", err)
+	}
+
+	if !slices.Equal(senders, wantSenders) {
+		t.Errorf("senders = %v, want unchanged %v", senders, wantSenders)
+	}
+	if !slices.Equal(sources, wantSources) {
+		t.Errorf("sources = %v, want unchanged %v", sources, wantSources)
+	}
+}
+
+// replyCode returns the SMTP reply code carried by err, or 0 if it has none.
+func replyCode(err error) int {
+	var tpErr *textproto.Error
+	if errors.As(err, &tpErr) {
+		return tpErr.Code
+	}
+
+	return 0
+}
+
+func TestBackendDenialsArePermanent(t *testing.T) {
+	tests := []struct {
+		name string
+		opt  BackendOption
+	}{
+		{"sender not allowed", WithAllowedSenders([]string{"zoe@example.com"})},
+		{"source not allowed", WithAllowedSources([]string{"192.0.2.1"})},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			addr, _ := startServer(t, &fakeMailer{}, tt.opt)
+
+			err := send(dial(t, addr), "alice@example.com", []string{"bob@example.com"}, testMessage)
+			if got := replyCode(err); got != 550 {
+				t.Errorf("reply code = %d (%v), want 550", got, err)
+			}
+		})
+	}
+}
+
+func TestBackendDeniedSourceCountsEachMessage(t *testing.T) {
+	addr, reg := startServer(t, &fakeMailer{}, WithAllowedSources([]string{"192.0.2.1"}))
+	c := dial(t, addr)
+
+	for range 2 {
+		if err := send(c, "alice@example.com", []string{"bob@example.com"}, testMessage); err == nil {
+			t.Fatalf("send() error = nil, want source denied")
+		}
+		if err := c.Reset(); err != nil {
+			t.Fatalf("Reset() error = %v", err)
+		}
+	}
+
+	if got := counter(t, reg, "graph_smtpd_email_denied_total"); got != 2 {
+		t.Errorf("denied = %v, want 2", got)
+	}
+}
+
+func TestNewBackendInvalidSource(t *testing.T) {
+	if _, err := NewBackend(&fakeMailer{}, WithAllowedSources([]string{"192.0.2.300"})); err == nil {
+		t.Errorf("NewBackend() error = nil, want error")
 	}
 }

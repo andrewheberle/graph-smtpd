@@ -48,8 +48,8 @@ docker run -p 25:2525 \
 * `--key`: Private key for enabling STARTTLS (string)
 * `--sentitems`: Save to senders sent items (bool)
 * `--secret`: Client Secret (string)
-* `--senders`: Allowed senders ([]string)
-* `--sources`: Allowed source IP addresses ([]string)
+* `--senders`: Allowed senders, matched case-insensitively ([]string)
+* `--sources`: Allowed source IP addresses or CIDR ranges, such as `10.0.0.0/8` ([]string)
 * `--tenantid`: Tenant ID (string)
 * `--metrics`: Listen address for metrics (string)
 

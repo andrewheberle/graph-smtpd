@@ -50,8 +50,8 @@ func main() {
 	f.Bool("sentitems", false, "Save to sent items in senders mailbox")
 
 	// Access controls
-	f.StringSlice("senders", []string{}, "List of allowed senders")
-	f.StringSlice("sources", []string{}, "Source IP addresses allowed to relay")
+	f.StringSlice("senders", []string{}, "List of allowed senders (case-insensitive)")
+	f.StringSlice("sources", []string{}, "Source IP addresses or CIDR ranges allowed to relay")
 
 	// TLS options
 	f.String("cert", "", "TLS certificate for STARTTLS")
