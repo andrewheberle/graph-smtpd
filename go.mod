@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.15.0
-	github.com/andrewheberle/configger v0.1.1
+	github.com/andrewheberle/configger v0.2.2
 	github.com/andrewheberle/redacted-string v1.1.0
 	github.com/cloudflare/certinel v0.4.1
 	github.com/emersion/go-message v0.18.2
@@ -31,11 +31,11 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/knadh/koanf/maps v0.1.2 // indirect
-	github.com/knadh/koanf/parsers/yaml v1.1.0 // indirect
+	github.com/knadh/koanf/parsers/yaml v1.1.1 // indirect
 	github.com/knadh/koanf/providers/env/v2 v2.0.0 // indirect
 	github.com/knadh/koanf/providers/file v1.2.1 // indirect
-	github.com/knadh/koanf/providers/posflag v1.0.1 // indirect
-	github.com/knadh/koanf/v2 v2.3.5 // indirect
+	github.com/knadh/koanf/providers/posflag v1.0.2 // indirect
+	github.com/knadh/koanf/v2 v2.4.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/microsoft/kiota-authentication-azure-go v1.3.1 // indirect
 	github.com/microsoft/kiota-http-go v1.5.6 // indirect
