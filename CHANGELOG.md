@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.12.1](https://github.com/andrewheberle/graph-smtpd/compare/v0.12.0...v0.12.1) (2026-10-17)
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/microsoft/kiota-abstractions-go to v1.11.2 ([#135](https://github.com/andrewheberle/graph-smtpd/issues/135)) ([4ea5d7d](https://github.com/andrewheberle/graph-smtpd/commit/4ea5d7d4153704c2ad5959274a0d445c0003dcde))
+* **deps:** update module golang.org/x/crypto to v0.58.0 ([#133](https://github.com/andrewheberle/graph-smtpd/issues/133)) ([9af8727](https://github.com/andrewheberle/graph-smtpd/commit/9af8727da71291ddb83c1098e1eb3add28a83935))
+
 ## [0.12.0](https://github.com/andrewheberle/graph-smtpd/compare/v0.11.0...v0.12.0) (2026-10-16)
 
 
