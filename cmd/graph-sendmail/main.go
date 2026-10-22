@@ -40,6 +40,7 @@ func main() {
 	f.String("clientid", "", "App Registration Client/Application ID")
 	f.String("tenantid", "", "App Registration Tenant ID")
 	f.String("secret", "", "App Registration Client Secret")
+	f.String("secret.file", "", "App Registration Client Secret (from file)")
 
 	// sending options
 	f.Bool("sentitems", false, "Save to sent items in senders mailbox")
