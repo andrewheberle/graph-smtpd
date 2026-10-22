@@ -1,6 +1,7 @@
-FROM gcr.io/distroless/base-debian13:nonroot@sha256:a0d70d6a97cd697d9362bc2aae4a6560dd65817e365d0043b07325a97975dc91
+FROM cgr.dev/chainguard/static:latest@sha256:17367e4d3ae2b46c3290858e483fac09be085c92b372360fe3bf6a6150848fde
 ARG TARGETPLATFORM
 ENV SMTPD_ADDR=":2525" SMTPD_METRICS=":8080"
 EXPOSE 2525 8080
 ENTRYPOINT [ "/usr/bin/graph-smtpd" ]
 COPY $TARGETPLATFORM/graph-smtpd /usr/bin/
+USER 65532
