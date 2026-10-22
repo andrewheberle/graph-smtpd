@@ -22,6 +22,7 @@ func flags(t *testing.T, args ...string) *pflag.FlagSet {
 	f.String("clientid", "", "")
 	f.String("tenantid", "", "")
 	f.String("secret", "", "")
+	f.String("secret.file", "", "")
 	if err := f.Parse(args); err != nil {
 		t.Fatalf("could not parse flags: %v", err)
 	}
