@@ -63,7 +63,7 @@ func main() {
 	f.String("clientid", "", "App Registration Client/Application ID")
 	f.String("tenantid", "", "App Registration Tenant ID")
 	f.String("secret", "", "App Registration Client Secret")
-	f.String("secret.file", "", "App Registration Client Secret (from file)")
+	f.String("secretfile", "", "App Registration Client Secret (from file)")
 
 	// metrics
 	f.String("metrics", "", "Listen address for metrics")

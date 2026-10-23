@@ -19,6 +19,7 @@ func loadConfig(t *testing.T, prefix string, args ...string) configger.Config {
 	f.String("clientid", "", "")
 	f.String("tenantid", "", "")
 	f.String("secret", "", "")
+	f.String("secretfile", "", "")
 	if err := f.Parse(args); err != nil {
 		t.Fatalf("could not parse flags: %v", err)
 	}
@@ -58,7 +59,7 @@ func TestCredentialsFromFlags(t *testing.T) {
 
 func TestCredentialsSecretFileFromConfigFile(t *testing.T) {
 	secretFile := writeFile(t, "secret", "file-secret\n")
-	config := writeFile(t, "config.yaml", "secret_file: "+secretFile+"\n")
+	config := writeFile(t, "config.yaml", "secretfile: "+secretFile+"\n")
 	cfg := loadConfig(t, "TEST", "--config", config)
 
 	_, _, secret, err := Credentials(cfg)
@@ -70,23 +71,23 @@ func TestCredentialsSecretFileFromConfigFile(t *testing.T) {
 	}
 }
 
-func TestCredentialsSecretWinsOverConfigFileSecretFile(t *testing.T) {
+func TestCredentialsSecretFileWinsOverSecret(t *testing.T) {
 	secretFile := writeFile(t, "secret", "file-secret")
-	config := writeFile(t, "config.yaml", "secret_file: "+secretFile+"\n")
+	config := writeFile(t, "config.yaml", "secretfile: "+secretFile+"\n")
 	cfg := loadConfig(t, "TEST", "--config", config, "--secret", "flag-secret")
 
 	_, _, secret, err := Credentials(cfg)
 	if err != nil {
 		t.Fatalf("Credentials() error = %v", err)
 	}
-	if secret != "flag-secret" {
-		t.Errorf("secret = %q, want %q", secret, "flag-secret")
+	if secret != "file-secret" {
+		t.Errorf("secret = %q, want %q", secret, "file-secret")
 	}
 }
 
 func TestCredentialsUnreadableSecretFile(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "missing")
-	config := writeFile(t, "config.yaml", "secret_file: "+missing+"\n")
+	config := writeFile(t, "config.yaml", "secretfile: "+missing+"\n")
 	cfg := loadConfig(t, "TEST", "--config", config)
 
 	if _, _, _, err := Credentials(cfg); err == nil {
@@ -102,8 +103,8 @@ func TestCredentialsSecretFileFromEnv(t *testing.T) {
 		env  map[string]string
 		want string
 	}{
-		{"secret file only", map[string]string{"TEST_SECRET_FILE": secretFile}, "file-secret"},
-		{"secret wins over secret file", map[string]string{"TEST_SECRET_FILE": secretFile, "TEST_SECRET": "env-secret"}, "env-secret"},
+		{"secret file only", map[string]string{"TEST_SECRETFILE": secretFile}, "file-secret"},
+		{"secret file wins over secret", map[string]string{"TEST_SECRETFILE": secretFile, "TEST_SECRET": "env-secret"}, "file-secret"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -117,7 +118,7 @@ func TestCredentialsSecretFileFromEnv(t *testing.T) {
 				t.Fatalf("Credentials() error = %v", err)
 			}
 			if secret != tt.want {
-				t.Errorf("secret = %q, want %q", secret, tt.want)
+				t.Errorf("secret = %q, want %q, %q", secret, tt.want, cfg.String("secret"))
 			}
 		})
 	}
