@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.12.2](https://github.com/andrewheberle/graph-smtpd/compare/v0.12.1...v0.12.2) (2026-10-23)
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/microsoft/kiota-abstractions-go to v1.11.4 ([#139](https://github.com/andrewheberle/graph-smtpd/issues/139)) ([6b6408d](https://github.com/andrewheberle/graph-smtpd/commit/6b6408d2902b7239c1e0065dc44cea67b1a81bd3))
+* **flags:** add secret.file as explicit flag ([#141](https://github.com/andrewheberle/graph-smtpd/issues/141)) ([048b901](https://github.com/andrewheberle/graph-smtpd/commit/048b901fe471729b1ba6024bd32166489339f5da))
+* **release:** update release process to support immutable releases ([4ee17be](https://github.com/andrewheberle/graph-smtpd/commit/4ee17bef1d12ebfabdf7ee85921a6c9ed8ab6f64))
+
 ## [0.12.1](https://github.com/andrewheberle/graph-smtpd/compare/v0.12.0...v0.12.1) (2026-10-22)
 
 
