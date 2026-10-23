@@ -57,6 +57,7 @@ release:
   make_latest: true
   replace_existing_artifacts: true
   prerelease: auto
+  use_existing_draft: true
 
 signs:
   - cmd: cosign
