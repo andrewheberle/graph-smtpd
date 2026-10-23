@@ -59,6 +59,7 @@ The container listens for SMTP on port 2525 and serves metrics on port 8080.
 * `--metrics`: Listen address for metrics, served at `/metrics` (string)
 * `--recipients`: Maximum recipients per message (default = 10) (int)
 * `--secret`: Client Secret (string)
+* `--secretfile`: Client Secret from a file (string)
 * `--senders`: Allowed senders, matched case-insensitively ([]string)
 * `--sentitems`: Save to senders sent items (bool)
 * `--sources`: Allowed source IP addresses or CIDR ranges, such as `10.0.0.0/8` ([]string)
@@ -69,7 +70,10 @@ The container listens for SMTP on port 2525 and serves metrics on port 8080.
 
 All command line options may be specified as environment variables in the form of `SMTPD_<option>`. List options such as `SMTPD_SENDERS` take a comma-separated value.
 
-The client secret may instead be loaded from a file by setting `SMTPD_SECRET_FILE` (or `secret_file` in the configuration file). The file is only used when no secret is set, and graph-smtpd will not start if the file cannot be read.
+The client secret may instead be loaded from a file by setting `SMTPD_SECRETFILE`
+(or `secretfile` in the configuration file). The file takes precedence over
+`SMTPD_SECRET` (or `secret` in the configuration file), and graph-smtpd will
+not start if the file cannot be read.
 
 ### Configuration File
 
@@ -154,6 +158,7 @@ cat email.txt | ./graph-sendmail
 * `--debug`: Enable debug logging (bool)
 * `--quiet`: Silence any output (bool)
 * `--secret`: Client Secret (string)
+* `--secretfile`: Client Secret from a file (string)
 * `--sentitems`: Save to senders sent items (bool)
 * `--tenantid`: Tenant ID (string)
 * `--timeout`: Time allowed to send the message via Graph (default = 30s, 0 for no limit) (duration)
@@ -161,7 +166,7 @@ cat email.txt | ./graph-sendmail
 
 The message is read from standard input and sent as the address in its `From` header.
 
-All command line options may be specified as environment variables in the form of `SENDMAIL_<option>`, and the client secret may be loaded from a file using `SENDMAIL_SECRET_FILE`, in the same way as for graph-smtpd.
+All command line options may be specified as environment variables in the form of `SENDMAIL_<option>`, and the client secret may be loaded from a file using `SENDMAIL_SECRETFILE`, in the same way as for graph-smtpd.
 
 All options may also be provided in a YAML configuration file using the `--config` command-line option.
 

@@ -22,7 +22,7 @@ func flags(t *testing.T, args ...string) *pflag.FlagSet {
 	f.String("clientid", "", "")
 	f.String("tenantid", "", "")
 	f.String("secret", "", "")
-	f.String("secret.file", "", "")
+	f.String("secretfile", "", "")
 	if err := f.Parse(args); err != nil {
 		t.Fatalf("could not parse flags: %v", err)
 	}
@@ -50,7 +50,7 @@ func TestLoadConfigSecretFileFromEnv(t *testing.T) {
 	if err := os.WriteFile(secretFile, []byte("file-secret\n"), 0o600); err != nil {
 		t.Fatalf("could not write secret file: %v", err)
 	}
-	t.Setenv("SENDMAIL_SECRET_FILE", secretFile)
+	t.Setenv("SENDMAIL_SECRETFILE", secretFile)
 
 	cfg, err := loadConfig(flags(t))
 	if err != nil {
