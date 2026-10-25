@@ -3,11 +3,11 @@
 [![codecov](https://codecov.io/gh/andrewheberle/graph-smtpd/graph/badge.svg?token=F1QP6YR3GP)](https://codecov.io/gh/andrewheberle/graph-smtpd)
 [![GitHub version](https://badge.fury.io/gh/andrewheberle%2Fgraph-smtpd.svg?icon=si%3Agithub)](https://badge.fury.io/gh/andrewheberle%2Fgraph-smtpd)
 
-This service is a SMTP daemon that will accept emails via SMTP and then submit them via the Microsoft Graph API to Microsoft 365, however in theory the submission process could be generalised to support any API driven email submission service.
+This service is a SMTP daemon that will accept emails via SMTP and then submit them via the Microsoft Graph API to Microsoft 365.
 
-The idea is to allow this service to run locally and accept emails from devices/systems that cannot support the modern authentication requirements of Exchange Online, such as OAuth2, and then relay them securely to Microsoft 365.
+Run this service locally to accept emails from devices/systems that cannot support the modern authentication requirements of Exchange Online, such as OAuth2, and then relay the emails securely to Microsoft 365.
 
-## Azure AD/Entra ID Requirements
+## Entra ID Requirements
 
 1. Create an "App Registration"
 2. Note down the Client/Application ID and Tenant ID
