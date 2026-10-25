@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.13.0](https://github.com/andrewheberle/graph-smtpd/compare/v0.12.2...v0.13.0) (2026-10-25)
+
+
+### ⚠ BREAKING CHANGES
+
+* **deps:** The secret_file option (--secret.file flag, _SECRET_FILE env var) is now secretfile (--secretfile flag, _SECRETFILE env var) and takes precedence over secret.
+
+### Bug Fixes
+
+* **deps:** update module github.com/microsoftgraph/msgraph-sdk-go to v1.105.0 ([#144](https://github.com/andrewheberle/graph-smtpd/issues/144)) ([5140a92](https://github.com/andrewheberle/graph-smtpd/commit/5140a92df4c3692d92834a779c6929017fb319d7))
+* **deps:** update to configger and change secret handling ([#146](https://github.com/andrewheberle/graph-smtpd/issues/146)) ([56d5407](https://github.com/andrewheberle/graph-smtpd/commit/56d54073809c659f20ecf43a886073c511e1391b))
+
 ## [0.12.2](https://github.com/andrewheberle/graph-smtpd/compare/v0.12.1...v0.12.2) (2026-10-23)
 
 
