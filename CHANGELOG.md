@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.1](https://github.com/andrewheberle/graph-smtpd/compare/v0.13.0...v0.13.1) (2026-10-26)
+
+
+### Bug Fixes
+
+* **deps:** update cgr.dev/chainguard/static:latest docker digest to c12f010 ([#150](https://github.com/andrewheberle/graph-smtpd/issues/150)) ([41a8f3a](https://github.com/andrewheberle/graph-smtpd/commit/41a8f3aaeb6844f3d1c8059a61f3531835c69676))
+
 ## [0.13.0](https://github.com/andrewheberle/graph-smtpd/compare/v0.12.2...v0.13.0) (2026-10-25)
 
 
