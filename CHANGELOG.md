@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.13.2](https://github.com/andrewheberle/graph-smtpd/compare/v0.13.1...v0.13.2) (2026-11-03)
+
+
+### Bug Fixes
+
+* **deps:** update cgr.dev/chainguard/static:latest docker digest to fc42af3 ([#153](https://github.com/andrewheberle/graph-smtpd/issues/153)) ([aa73989](https://github.com/andrewheberle/graph-smtpd/commit/aa73989e0634e3b8f89dc91c99992bae138e5522))
+* **deps:** update module github.com/microsoft/kiota-abstractions-go to v1.12.0 ([#152](https://github.com/andrewheberle/graph-smtpd/issues/152)) ([b12ff75](https://github.com/andrewheberle/graph-smtpd/commit/b12ff7523f4f580abfdbf917f01a0b3c6f40cfd4))
+
 ## [0.13.1](https://github.com/andrewheberle/graph-smtpd/compare/v0.13.0...v0.13.1) (2026-10-26)
 
 
