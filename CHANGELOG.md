@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.13.3](https://github.com/andrewheberle/graph-smtpd/compare/v0.13.2...v0.13.3) (2026-11-06)
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/emersion/go-smtp to v0.25.1 ([#157](https://github.com/andrewheberle/graph-smtpd/issues/157)) ([5def572](https://github.com/andrewheberle/graph-smtpd/commit/5def57245c0a4444532e234a5673cd093c913ed4))
+
 ## [0.13.2](https://github.com/andrewheberle/graph-smtpd/compare/v0.13.1...v0.13.2) (2026-11-03)
 
 
