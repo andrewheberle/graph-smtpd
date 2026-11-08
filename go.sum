@@ -12,6 +12,8 @@ github.com/AzureAD/microsoft-authentication-library-for-go v1.10.1 h1:0O6j18nQDo
 github.com/AzureAD/microsoft-authentication-library-for-go v1.10.1/go.mod h1:xdYAf5bjkOpsd3auA8riiJW4vneBubt9caavL7626jQ=
 github.com/andrewheberle/configger v0.2.2 h1:CnlED5mYND5zSWMNB9DYUo/yokf/33pVqdWbtIsK3/o=
 github.com/andrewheberle/configger v0.2.2/go.mod h1:Je1DPg82cgWUa+FJq0Ge1QtgoJpCaiAiaWuIc4+h7K4=
+github.com/andrewheberle/configger v0.2.3 h1:7RJVyBHhiLTumwdxcG9rSPMVTMdxcKKpa5go3GWSEv4=
+github.com/andrewheberle/configger v0.2.3/go.mod h1:rHkF/nAf3XE8nYSiM9DhnrdTdF44y1afvbzYKPrZ5mc=
 github.com/andrewheberle/redacted-string v1.1.0 h1:aB90v9RCoyshfHmR+gh18Sb+sOCWZX//z9yaprj4VC4=
 github.com/andrewheberle/redacted-string v1.1.0/go.mod h1:A+qjv0GQYSYXhyNrS1wIsJPO5Sid3XmvCTDiacFytbE=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
@@ -57,6 +59,8 @@ github.com/knadh/koanf/providers/posflag v1.0.2 h1:ky9Yqmoz0EHGfby6/gB6SUXmLs5kj
 github.com/knadh/koanf/providers/posflag v1.0.2/go.mod h1:3Wn3+YG3f4ljzRyCUgIwH7G0sZ1pMjCOsNBovrbKmAk=
 github.com/knadh/koanf/v2 v2.4.0 h1:wmp0NlAUIasxphpHIU6Su5sKQn3Up/AvI2ZA2GeJTUk=
 github.com/knadh/koanf/v2 v2.4.0/go.mod h1:gRb40VRAbd4iJMYYD5IxZ6hfuopFcXBpc9bbQpZwo28=
+github.com/knadh/koanf/v2 v2.4.1 h1:MK2JDkLy4UGzEUkW1CCCKQftd9+M+NX8hAZ2axbf/jo=
+github.com/knadh/koanf/v2 v2.4.1/go.mod h1:gRb40VRAbd4iJMYYD5IxZ6hfuopFcXBpc9bbQpZwo28=
 github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0SNc=
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/microsoft/kiota-abstractions-go v1.11.4 h1:zYWRDtOrOYwp56UIkMR5B6703wYXlsKiBZYJlHJJpRI=
@@ -101,6 +105,8 @@ github.com/prometheus/procfs v0.22.0 h1:6q9+/JL9IKAPbCmBrv9n5O5Ty3NKnciV5X7YGw0o
 github.com/prometheus/procfs v0.22.0/go.mod h1:CvmFr/GVhIjIvWJZW3tgkODBQMRIf0EyWMQLHCHab58=
 github.com/spf13/pflag v1.0.10 h1:4EBh2KAYBwaONj6b2Ye1GiHfwjqyROoF4RwYO+vPwFk=
 github.com/spf13/pflag v1.0.10/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
+github.com/spf13/pflag v1.1.0 h1:6W6MbVUrnMb8PEhjkqwsVLY7ryuzRfFHF4mQd7L94ag=
+github.com/spf13/pflag v1.1.0/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
 github.com/std-uritemplate/std-uritemplate/go/v2 v2.0.12 h1:wxCxe+V5vu01YFrFgKj22gViqn8Yj4i9d9ecvdHvTGU=
 github.com/std-uritemplate/std-uritemplate/go/v2 v2.0.12/go.mod h1:Z5KcoM0YLC7INlNhEezeIZ0TZNYf7WSNO0Lvah4DSeQ=
 github.com/stretchr/testify v1.12.1 h1:EuwCh5fleGS7H32xRwO3wRGT7DxrDhLAT6FF8MpWDWE=
