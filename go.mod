@@ -11,7 +11,7 @@ require (
 	github.com/emersion/go-sasl v0.0.0-20241020182733-b788ff22d5a6
 	github.com/emersion/go-smtp v0.25.1
 	github.com/microsoft/kiota-abstractions-go v1.12.1
-	github.com/microsoftgraph/msgraph-sdk-go v1.105.0
+	github.com/microsoftgraph/msgraph-sdk-go v1.106.0
 	github.com/oklog/run v1.2.0
 	github.com/prometheus/client_golang v1.25.0
 	github.com/spf13/pflag v1.1.0
