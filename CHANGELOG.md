@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.13.3](https://github.com/andrewheberle/graph-smtpd/compare/v0.13.2...v0.13.3) (2026-11-09)
+
+
+### Bug Fixes
+
+* **deps:** update module github.com/andrewheberle/configger to v0.2.3 ([#162](https://github.com/andrewheberle/graph-smtpd/issues/162)) ([1b7a26e](https://github.com/andrewheberle/graph-smtpd/commit/1b7a26e3c6dc7a8a4191f988d9b97267d2442f01))
+* **deps:** update module github.com/emersion/go-smtp to v0.25.1 ([#157](https://github.com/andrewheberle/graph-smtpd/issues/157)) ([5def572](https://github.com/andrewheberle/graph-smtpd/commit/5def57245c0a4444532e234a5673cd093c913ed4))
+* **deps:** update module github.com/microsoft/kiota-abstractions-go to v1.12.1 ([#161](https://github.com/andrewheberle/graph-smtpd/issues/161)) ([3880a6a](https://github.com/andrewheberle/graph-smtpd/commit/3880a6a304aaa427186e86c1eeaa7340651bc03b))
+* **deps:** update module github.com/microsoftgraph/msgraph-sdk-go to v1.106.0 ([#163](https://github.com/andrewheberle/graph-smtpd/issues/163)) ([910e007](https://github.com/andrewheberle/graph-smtpd/commit/910e007ad0d49b94388960a20057f959b68bd487))
+
 ## [0.13.2](https://github.com/andrewheberle/graph-smtpd/compare/v0.13.1...v0.13.2) (2026-11-03)
 
 
